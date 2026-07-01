@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../../core/widgets/glass_card.dart';
 
-class SubscriptionScreen extends StatelessWidget {
+class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  _SubscriptionPlan _selectedPlan = _SubscriptionPlan.yearly;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +67,7 @@ class SubscriptionScreen extends StatelessWidget {
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Image.asset(
-                      'assets/images/icon.png',
+                      'assets/images/icon3.png',
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -76,7 +83,7 @@ class SubscriptionScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Get access to Gwen conversations and supportive guidance throughout the app.',
+                  'Start with a 3-day free trial, then continue with the plan that fits you best.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -89,20 +96,44 @@ class SubscriptionScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(22),
                   child: Column(
                     children: [
-                      Text(
-                        '\$5.99',
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              color: surfaceText,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      _PlanOption(
+                        title: 'Monthly',
+                        price: '\$5.99',
+                        period: 'per month',
+                        isSelected: _selectedPlan == _SubscriptionPlan.monthly,
+                        primaryColor: primaryColor,
+                        surfaceText: surfaceText,
+                        mutedText: mutedText,
+                        onTap: () {
+                          setState(() {
+                            _selectedPlan = _SubscriptionPlan.monthly;
+                          });
+                        },
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 12),
+                      _PlanOption(
+                        title: 'Yearly',
+                        price: '\$49.99',
+                        period: 'per year',
+                        badge: 'Best value',
+                        isSelected: _selectedPlan == _SubscriptionPlan.yearly,
+                        primaryColor: primaryColor,
+                        surfaceText: surfaceText,
+                        mutedText: mutedText,
+                        onTap: () {
+                          setState(() {
+                            _selectedPlan = _SubscriptionPlan.yearly;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       Text(
-                        'per month',
+                        '3 days free, then ${_selectedPlan.price} ${_selectedPlan.periodLabel}.',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: mutedText,
                           fontWeight: FontWeight.w700,
+                          height: 1.35,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -142,8 +173,14 @@ class SubscriptionScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                          child: const Text('Subscribe'),
+                          child: const Text('Try for free'),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Cancel anytime.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: mutedText, fontSize: 12),
                       ),
                     ],
                   ),
@@ -152,6 +189,132 @@ class SubscriptionScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+enum _SubscriptionPlan {
+  monthly(price: '\$5.99', periodLabel: 'per month'),
+  yearly(price: '\$49.99', periodLabel: 'per year');
+
+  final String price;
+  final String periodLabel;
+
+  const _SubscriptionPlan({required this.price, required this.periodLabel});
+}
+
+class _PlanOption extends StatelessWidget {
+  final String title;
+  final String price;
+  final String period;
+  final String? badge;
+  final bool isSelected;
+  final Color primaryColor;
+  final Color surfaceText;
+  final Color mutedText;
+  final VoidCallback onTap;
+
+  const _PlanOption({
+    required this.title,
+    required this.price,
+    required this.period,
+    this.badge,
+    required this.isSelected,
+    required this.primaryColor,
+    required this.surfaceText,
+    required this.mutedText,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedBackground = primaryColor.withAlpha(24);
+    final borderColor = isSelected
+        ? primaryColor
+        : Theme.of(context).dividerColor.withAlpha(102);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? selectedBackground : Colors.white.withAlpha(28),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: isSelected ? primaryColor : mutedText,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: surfaceText,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withAlpha(32),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            badge!,
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    period,
+                    style: TextStyle(
+                      color: mutedText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              price,
+              style: TextStyle(
+                color: surfaceText,
+                fontWeight: FontWeight.w900,
+                fontSize: 20,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

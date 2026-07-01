@@ -1,0 +1,11 @@
+D:\Antigravity\DealingWithAnxiety\build\app\outputs\flutter-apk>C:\Users\Maris\AppData\Local\Android\Sdk\build-tools\36.1.0\apksigner verify --print-certs app-release.apk
+Signer #1 certificate DN: C=US, O=Android, CN=Android Debug
+Signer #1 certificate SHA-256 digest: 95ae252882604e5322460ceb3d218e9da08f894f428bc92757ba01a46652fa7a
+Signer #1 certificate SHA-1 digest: 5719f675d6d3b0fb37d4fa8e6a34806d35aed04c
+Signer #1 certificate MD5 digest: 496b73a07fe9b3c39253c77b1a41feba
+
+
+Run keytool:
+keytool -genkey -v -keystore c:\Users\Maris\upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+password: huyter

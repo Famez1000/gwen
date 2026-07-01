@@ -34,6 +34,8 @@ workflows:
           xcodebuild -list -project ios/Runner.xcodeproj
           xcodebuild -list -workspace ios/Runner.xcworkspace
       - name: Build unsigned iOS release
-        script: flutter build ios --release --no-codesign -v
+        script: >
+          flutter build ios --release --no-codesign -v
+          --dart-define=GWEN_AI_FUNCTION_URL=$GWEN_AI_FUNCTION_URL
     artifacts:
       - build/ios/iphoneos/Runner.app

@@ -14,13 +14,26 @@ workflows:
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
+      - name: Generate Flutter iOS configuration
+        script: flutter build ios --config-only --no-codesign
       - name: Install CocoaPods dependencies
         script: |
-          cd ios
-          pod install
-      - name: List iOS workspace schemes
-        script: xcodebuild -list -workspace ios/Runner.xcworkspace
+          if [ -f ios/Podfile ]; then
+            cd ios
+            pod install
+          else
+            echo "No ios/Podfile found; skipping CocoaPods install."
+          fi
+      - name: Inspect iOS project files
+        script: |
+          pwd
+          ls -la ios
+          find ios -maxdepth 4 -name "*.xcscheme" -print
+      - name: List iOS project and workspace schemes
+        script: |
+          xcodebuild -list -project ios/Runner.xcodeproj
+          xcodebuild -list -workspace ios/Runner.xcworkspace
       - name: Build unsigned iOS release
-        script: flutter build ios --release --no-codesign
+        script: flutter build ios --release --no-codesign -v
     artifacts:
       - build/ios/iphoneos/Runner.app

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 import 'ask_yourself_screen.dart';
 import 'body_signals_screen.dart';
 import 'faq_screen.dart';
@@ -15,9 +15,11 @@ class UnderstandScreen extends StatelessWidget {
   const UnderstandScreen({super.key, this.onBack});
 
   void _openSubscription(BuildContext context) {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: 'Understand with Gwen',
+      pageContext:
+          'The user opened Gwen from the anxiety learning overview screen.',
     );
   }
 

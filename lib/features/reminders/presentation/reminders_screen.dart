@@ -13,51 +13,35 @@ class _RemindersScreenState extends State<RemindersScreen> {
   final TextEditingController _customReminderController =
       TextEditingController();
 
-  final List<_ReminderItem> _reminders = [
-    _ReminderItem(
-      id: 1001,
-      title: 'Morning check-in',
-      time: '8:30 AM',
-      hour: 8,
-      minute: 30,
-      description: 'Pause, name your mood, and set one gentle intention.',
-      icon: Icons.wb_sunny_rounded,
-      color: Color(0xFFE7C9A9),
-      isEnabled: true,
-    ),
-    _ReminderItem(
-      id: 1002,
-      title: 'Breathing break',
-      time: '1:00 PM',
-      hour: 13,
-      minute: 0,
-      description: 'Take two minutes to loosen your jaw and slow your exhale.',
-      icon: Icons.air_rounded,
-      color: Color(0xFF7FC8B2),
-      isEnabled: true,
-    ),
-    _ReminderItem(
-      id: 1003,
-      title: 'Evening reflection',
-      time: '8:00 PM',
-      hour: 20,
-      minute: 0,
-      description: 'Write one thing you handled today, even if it was small.',
-      icon: Icons.nights_stay_rounded,
-      color: Color(0xFF8B85A8),
-    ),
-  ];
+  final List<_ReminderItem> _reminders = NotificationService
+      .defaultDailyReminders
+      .map(_ReminderItem.fromSchedule)
+      .toList();
 
   @override
   void initState() {
     super.initState();
-    _scheduleEnabledReminders();
+    _loadReminderSchedules();
   }
 
   @override
   void dispose() {
     _customReminderController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadReminderSchedules() async {
+    final schedules = await NotificationService.instance
+        .loadDailyReminderSchedules();
+    if (!mounted) return;
+
+    setState(() {
+      _reminders
+        ..clear()
+        ..addAll(schedules.map(_ReminderItem.fromSchedule));
+    });
+
+    await _scheduleEnabledReminders();
   }
 
   Future<void> _scheduleEnabledReminders() async {
@@ -72,9 +56,16 @@ class _RemindersScreenState extends State<RemindersScreen> {
     }
   }
 
+  Future<void> _saveReminderSchedules() async {
+    await NotificationService.instance.saveDailyReminderSchedules(
+      _reminders.map((reminder) => reminder.toSchedule()).toList(),
+    );
+  }
+
   Future<void> _toggleReminder(int index, bool value) async {
     final reminder = _reminders[index];
     setState(() => _reminders[index].isEnabled = value);
+    await _saveReminderSchedules();
 
     if (value) {
       await NotificationService.instance.scheduleDailyReminder(
@@ -98,7 +89,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
     );
   }
 
-  void _addCustomReminder() {
+  Future<void> _addCustomReminder() async {
     final text = _customReminderController.text.trim();
     if (text.isEmpty) return;
 
@@ -117,7 +108,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
       );
       _customReminderController.clear();
     });
+    await _saveReminderSchedules();
 
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Reminder added')));
@@ -137,6 +130,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
       if (!mounted) return;
 
       setState(() => _reminders.removeAt(index));
+      await _saveReminderSchedules();
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Reminder removed')));
@@ -150,6 +146,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
       reminder.minute = updated.time.minute;
       reminder.time = _formatReminderTime(updated.time);
     });
+    await _saveReminderSchedules();
 
     if (reminder.isEnabled) {
       await NotificationService.instance.scheduleDailyReminder(
@@ -200,7 +197,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
                     child: TextField(
                       controller: _customReminderController,
                       textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _addCustomReminder(),
+                      onSubmitted: (_) {
+                        _addCustomReminder();
+                      },
                       decoration: const InputDecoration(
                         hintText: 'Add your own reminder...',
                         border: InputBorder.none,
@@ -209,7 +208,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   ),
                   IconButton(
                     tooltip: 'Add reminder',
-                    onPressed: _addCustomReminder,
+                    onPressed: () {
+                      _addCustomReminder();
+                    },
                     icon: const Icon(Icons.add_circle_rounded),
                   ),
                 ],
@@ -502,6 +503,48 @@ class _ReminderItem {
     required this.color,
     this.isEnabled = false,
   });
+
+  factory _ReminderItem.fromSchedule(DailyReminderSchedule schedule) {
+    return _ReminderItem(
+      id: schedule.id,
+      title: schedule.title,
+      time: _formatScheduleTime(schedule.hour, schedule.minute),
+      hour: schedule.hour,
+      minute: schedule.minute,
+      description: schedule.body,
+      icon: switch (schedule.id) {
+        1001 => Icons.wb_sunny_rounded,
+        1002 => Icons.air_rounded,
+        1003 => Icons.nights_stay_rounded,
+        _ => Icons.notifications_active_rounded,
+      },
+      color: switch (schedule.id) {
+        1001 => const Color(0xFFE7C9A9),
+        1002 => const Color(0xFF7FC8B2),
+        1003 => const Color(0xFF8B85A8),
+        _ => const Color(0xFF7FC8B2),
+      },
+      isEnabled: schedule.isEnabled,
+    );
+  }
+
+  DailyReminderSchedule toSchedule() {
+    return DailyReminderSchedule(
+      id: id,
+      title: title,
+      body: description,
+      hour: hour,
+      minute: minute,
+      isEnabled: isEnabled,
+    );
+  }
+
+  static String _formatScheduleTime(int hour, int minute) {
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    final displayMinute = minute.toString().padLeft(2, '0');
+    return '$displayHour:$displayMinute $period';
+  }
 }
 
 class _ReminderEditResult {

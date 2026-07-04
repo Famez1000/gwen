@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/services/gemini_service.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 
 class DrawingGuessScreen extends StatefulWidget {
   const DrawingGuessScreen({super.key});
@@ -125,9 +125,11 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
   }
 
   void _openSubscription() {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: 'Draw with Gwen',
+      pageContext:
+          'The user opened Gwen from the drawing guess game after sketching or preparing to sketch something.',
     );
   }
 

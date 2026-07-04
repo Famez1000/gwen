@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 
 class FaqScreen extends StatefulWidget {
   const FaqScreen({super.key});
@@ -65,9 +65,11 @@ class _FaqScreenState extends State<FaqScreen> {
   }
 
   void _openSubscription(BuildContext context) {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: 'Anxiety FAQ with Gwen',
+      pageContext:
+          'The user opened Gwen from the anxiety FAQ screen with common questions and answers about anxiety.',
     );
   }
 

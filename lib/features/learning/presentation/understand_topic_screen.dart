@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 
 class UnderstandTopicScreen extends StatelessWidget {
   final String title;
@@ -24,9 +24,10 @@ class UnderstandTopicScreen extends StatelessWidget {
   });
 
   void _openSubscription(BuildContext context) {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: '$title with Gwen',
+      pageContext: gwenContext,
     );
   }
 

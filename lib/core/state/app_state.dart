@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 
@@ -52,6 +53,8 @@ class AppState extends ChangeNotifier {
   String _moodRealityText = '';
   String _moodFavoriteSongUrl = '';
   bool _healDisclaimerAccepted = false;
+  bool _storeSubscriptionActive = false;
+  bool _debugSubscriptionActive = false;
   List<String> _recentGwenJokes = [];
   List<String> _groundingObjects = List.of(defaultGroundingObjects);
   List<String> _groundingTouchObjects = List.of(defaultGroundingTouchObjects);
@@ -80,6 +83,8 @@ class AppState extends ChangeNotifier {
   String get moodRealityText => _moodRealityText;
   String get moodFavoriteSongUrl => _moodFavoriteSongUrl;
   bool get healDisclaimerAccepted => _healDisclaimerAccepted;
+  bool get hasActiveSubscription =>
+      _storeSubscriptionActive || (kDebugMode && _debugSubscriptionActive);
   List<String> get recentGwenJokes => List.unmodifiable(_recentGwenJokes);
   List<String> get groundingObjects => List.unmodifiable(_groundingObjects);
   List<String> get groundingTouchObjects =>
@@ -118,6 +123,8 @@ class AppState extends ChangeNotifier {
     _moodFavoriteSongUrl = _storage.getMoodFavoriteSongUrl();
     _recentGwenJokes = _storage.getRecentGwenJokes();
     _healDisclaimerAccepted = _storage.getHealDisclaimerAccepted();
+    _storeSubscriptionActive = _storage.getStoreSubscriptionActive();
+    _debugSubscriptionActive = _storage.getDebugSubscriptionActive();
     final savedGroundingObjects = _storage.getGroundingObjects();
     _groundingObjects = _normalizeGroundingObjects(savedGroundingObjects);
     final savedGroundingTouchObjects = _storage.getGroundingTouchObjects();
@@ -383,6 +390,22 @@ class AppState extends ChangeNotifier {
 
     _healDisclaimerAccepted = true;
     await _storage.setHealDisclaimerAccepted(true);
+    notifyListeners();
+  }
+
+  Future<void> activateDebugSubscription() async {
+    if (!kDebugMode || _debugSubscriptionActive) return;
+
+    _debugSubscriptionActive = true;
+    await _storage.setDebugSubscriptionActive(true);
+    notifyListeners();
+  }
+
+  Future<void> activateStoreSubscription() async {
+    if (_storeSubscriptionActive) return;
+
+    _storeSubscriptionActive = true;
+    await _storage.setStoreSubscriptionActive(true);
     notifyListeners();
   }
 

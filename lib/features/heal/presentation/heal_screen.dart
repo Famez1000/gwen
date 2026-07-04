@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../meditations/presentation/meditations_screen.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 import 'acceptance_screen.dart';
 import 'forgiveness_screen.dart';
 import 'let_go_screen.dart';
@@ -140,9 +140,11 @@ class _HealScreenState extends State<HealScreen> {
   }
 
   void _openSubscription(BuildContext context) {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: 'Heal with Gwen',
+      pageContext:
+          'The user opened Gwen from the healing space screen, which includes acceptance, letting go, forgiveness, survival mode support, and guided meditations.',
     );
   }
 

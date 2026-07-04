@@ -6,10 +6,11 @@ import '../../drawing_guess/presentation/drawing_guess_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
 import '../../meditations/presentation/meditations_screen.dart';
 import '../../reflection/presentation/reflection_screen.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 import '../../thought_support/presentation/thought_support_screen.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import 'gwen_joke_screen.dart';
 import 'leaf_exercise_screen.dart';
 
 import 'package:provider/provider.dart';
@@ -85,9 +86,11 @@ class SanctuaryScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       _VanquishWithGwenButton(
-                        onTap: () => _navigateToScreen(
+                        onTap: () => openGwenChatOrSubscription(
                           context,
-                          const SubscriptionScreen(),
+                          title: 'Cope with Gwen',
+                          pageContext:
+                              'The user opened Gwen from the calm tools screen with grounding, breathing, drawing, meditations, affirmations, and reflection tools.',
                         ),
                       ),
                     ],
@@ -139,8 +142,10 @@ class SanctuaryScreen extends StatelessWidget {
                     icon: Icons.sentiment_satisfied_alt_rounded,
                     imageAsset: 'assets/images/gwen_funny2.png',
                     color: Colors.orange.shade600,
-                    onTap: () =>
-                        _navigateToScreen(context, const SubscriptionScreen()),
+                    onTap: () => openSubscribedFeatureOrSubscription(
+                      context,
+                      const GwenJokeScreen(),
+                    ),
                   ),
                   const SizedBox(height: 16),
 

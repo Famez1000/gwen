@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 
 class JournalingScreen extends StatefulWidget {
   final AppState appState;
@@ -131,9 +131,11 @@ class _JournalingScreenState extends State<JournalingScreen> {
   }
 
   void _openSubscription() {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: 'Journal with Gwen',
+      pageContext:
+          'The user opened Gwen from the daily journal screen, where they write feelings and track an anxiety score.',
     );
   }
 

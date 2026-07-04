@@ -25,6 +25,8 @@ class StorageService {
   static const String _keyGroundingSoundObjects = 'grounding_sound_objects';
   static const String _keyGroundingSmellObjects = 'grounding_smell_objects';
   static const String _keyGroundingTasteObjects = 'grounding_taste_objects';
+  static const String _keyDebugSubscriptionActive = 'debug_subscription_active';
+  static const String _keyStoreSubscriptionActive = 'store_subscription_active';
 
   late final SharedPreferences _prefs;
 
@@ -265,5 +267,21 @@ class StorageService {
 
   Future<void> setGroundingTasteObjects(List<String> objects) async {
     await _prefs.setStringList(_keyGroundingTasteObjects, objects);
+  }
+
+  bool getDebugSubscriptionActive() {
+    return _prefs.getBool(_keyDebugSubscriptionActive) ?? false;
+  }
+
+  Future<void> setDebugSubscriptionActive(bool active) async {
+    await _prefs.setBool(_keyDebugSubscriptionActive, active);
+  }
+
+  bool getStoreSubscriptionActive() {
+    return _prefs.getBool(_keyStoreSubscriptionActive) ?? false;
+  }
+
+  Future<void> setStoreSubscriptionActive(bool active) async {
+    await _prefs.setBool(_keyStoreSubscriptionActive, active);
   }
 }

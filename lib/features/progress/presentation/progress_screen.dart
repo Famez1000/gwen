@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 
 class ProgressScreen extends StatefulWidget {
   final AppState appState;
@@ -47,9 +47,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   void _openSubscription() {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: 'Progress with Gwen',
+      pageContext:
+          'The user opened Gwen from the progress screen, where they track anxiety logs, journal scores, calm streaks, and breathing sessions.',
     );
   }
 

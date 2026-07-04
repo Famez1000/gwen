@@ -5,7 +5,7 @@ import '../../profile/presentation/profile_screen.dart';
 import '../../progress/presentation/progress_screen.dart';
 import '../../reminders/presentation/reminders_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 import 'mood_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -70,15 +70,10 @@ class HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 44),
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SubscriptionScreen(),
-                      ),
-                    );
+                    openGwenChatOrSubscription(context);
                   },
                   child: Image.asset(
-                    'assets/images/icon.png',
+                    'assets/images/gwen_relaxed.png',
                     width: 180,
                     height: 180,
                     fit: BoxFit.contain,

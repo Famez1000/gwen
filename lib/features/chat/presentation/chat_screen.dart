@@ -48,6 +48,10 @@ class _ChatScreenState extends State<ChatScreen>
     'DEBUG_CHAT',
     defaultValue: true,
   );
+  static const bool _showAiErrors = bool.fromEnvironment(
+    'SHOW_AI_ERRORS',
+    defaultValue: true,
+  );
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -165,7 +169,10 @@ class _ChatScreenState extends State<ChatScreen>
       );
     } catch (error) {
       _debugLog('Gemini request failed; using local Gwen fallback: $error');
-      responseText = _generateTherapeuticResponse(text);
+      final fallbackText = _generateTherapeuticResponse(text);
+      responseText = _showAiErrors
+          ? 'Gwen AI could not connect: $error\n\nLocal fallback:\n$fallbackText'
+          : fallbackText;
       _debugLog(
         'Fallback response chars=${responseText.length}, lines=${_lineCount(responseText)}, preview="${_preview(responseText)}"',
       );

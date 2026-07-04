@@ -33,19 +33,18 @@ firebase deploy --only functions:gwenAi
 
 After deployment, Firebase prints an HTTPS URL for `gwenAi`. Use that URL as
 the app's `GWEN_AI_FUNCTION_URL`.
+Function URL (gwenAi(us-central1)): https://gwenai-bf2iljcfjq-uc.a.run.app 
 
 ## Local build
 
-Build the app with the deployed function URL:
-
+For Android:
 ```bash
-flutter build appbundle --release --dart-define=GWEN_AI_FUNCTION_URL=https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/gwenAi
+flutter build appbundle --release --dart-define=GWEN_AI_FUNCTION_URL=https://gwenai-bf2iljcfjq-uc.a.run.app
 ```
 
 For iOS:
-
 ```bash
-flutter build ios --release --no-codesign --dart-define=GWEN_AI_FUNCTION_URL=https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/gwenAi
+flutter build ios --release --no-codesign --dart-define=GWEN_AI_FUNCTION_URL=https://gwenai-bf2iljcfjq-uc.a.run.app
 ```
 
 ## Codemagic
@@ -53,7 +52,7 @@ flutter build ios --release --no-codesign --dart-define=GWEN_AI_FUNCTION_URL=htt
 Add an environment variable in Codemagic:
 
 ```text
-GWEN_AI_FUNCTION_URL=https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/gwenAi
+GWEN_AI_FUNCTION_URL=https://gwenai-bf2iljcfjq-uc.a.run.app 
 ```
 
 The current `codemagic.yaml` passes this variable to Flutter with
@@ -65,3 +64,15 @@ The current `codemagic.yaml` passes this variable to Flutter with
 - Consider enabling Firebase App Check before production traffic grows.
 - If abuse becomes a concern, require Firebase Auth or App Check verification in
   the function before calling Gemini.
+
+Function URL (gwenAi(us-central1)): https://gwenai-bf2iljcfjq-uc.a.run.app 
+https://console.firebase.google.com/project/mijnfb-c0a3b/overview
+
+The actual AI workflow is:
+User types/sends a message in ChatScreen.
+_sendGeminiResponse() calls either generateGwenResponse() or generateContextualGwenResponse() at [chat_screen.dart (line 157)](/d:/Antigravity/DealingWithAnxiety/lib/features/chat/presentation/chat_screen.dart:157).
+GeminiService posts JSON like { operation, payload } to the Firebase function URL at [gemini_service.dart (line 81)](/d:/Antigravity/DealingWithAnxiety/lib/core/services/gemini_service.dart:81).
+Firebase gwenAi receives the request, builds the Gemini prompt/body based on operation, then calls Gemini with the secret key at [functions/index.js (line 9)](/d:/Antigravity/DealingWithAnxiety/functions/index.js:9).
+Firebase returns { text }.
+Flutter parses text and adds Gwen’s reply to the chat. If the request fails, ChatScreen falls back to a local canned supportive response.
+So: app users never receive the Gemini key. They only hit your Firebase function. The current Gwen image tap mostly gates users into SubscriptionScreen; AI starts when a feature calls GeminiService.

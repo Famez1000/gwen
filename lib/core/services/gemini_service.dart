@@ -8,9 +8,12 @@ class GeminiService {
 
   static final GeminiService instance = GeminiService._();
 
-  static const String _functionUrl = String.fromEnvironment(
+  static const String _gwenAiFunctionUrl = String.fromEnvironment(
     'GWEN_AI_FUNCTION_URL',
   );
+  static const String _legacyGwenAiUrl = String.fromEnvironment('GWENAI_URL');
+  static const String _defaultGwenAiUrl =
+      'https://gwenai-bf2iljcfjq-uc.a.run.app';
   static const bool _debugGemini = bool.fromEnvironment(
     'DEBUG_GEMINI',
     defaultValue: true,
@@ -82,11 +85,12 @@ class GeminiService {
     String operation,
     Map<String, dynamic> payload,
   ) async {
-    if (_functionUrl.trim().isEmpty) {
+    final functionUrl = _functionUrl;
+    if (functionUrl.isEmpty) {
       throw const GeminiServiceException('Gwen AI function URL is missing.');
     }
 
-    final uri = Uri.parse(_functionUrl.trim());
+    final uri = Uri.parse(functionUrl);
 
     final requestBody = jsonEncode({
       'operation': operation,
@@ -115,7 +119,8 @@ class GeminiService {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw GeminiServiceException(
-          'Gwen AI request failed with status ${response.statusCode}.',
+          'Gwen AI request failed with status ${response.statusCode}: '
+          '${_preview(responseText, 300)}',
         );
       }
 
@@ -123,6 +128,24 @@ class GeminiService {
     } finally {
       client.close(force: true);
     }
+  }
+
+  String get _functionUrl {
+    if (_gwenAiFunctionUrl.trim().isNotEmpty) {
+      return _normalizeFunctionUrl(_gwenAiFunctionUrl);
+    }
+    if (_legacyGwenAiUrl.trim().isNotEmpty) {
+      return _normalizeFunctionUrl(_legacyGwenAiUrl);
+    }
+    return _defaultGwenAiUrl;
+  }
+
+  String _normalizeFunctionUrl(String value) {
+    final trimmed = value.trim();
+    if (trimmed == '${_defaultGwenAiUrl}c') {
+      return _defaultGwenAiUrl;
+    }
+    return trimmed;
   }
 
   String _extractFunctionText(String responseText) {

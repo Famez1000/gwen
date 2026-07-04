@@ -9,7 +9,7 @@ import '../../breathing/presentation/breathing_screen.dart';
 import '../../drawing_guess/presentation/drawing_guess_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
 import '../../sanctuary/presentation/leaf_exercise_screen.dart';
-import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/application/subscription_gate.dart';
 
 class PanicMoodScreen extends StatelessWidget {
   final VoidCallback? onBack;
@@ -558,9 +558,11 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
   }
 
   void _openMoodGwen() {
-    Navigator.push(
+    openGwenChatOrSubscription(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      title: _headerTitle,
+      pageContext:
+          'The user opened Gwen from a mood support screen after choosing their current anxiety state.',
     );
   }
 

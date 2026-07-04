@@ -53,7 +53,13 @@ class StillnessApp extends StatelessWidget {
                 : ThemeMode.light,
             home: appState.onboardingCompleted
                 ? AppShell(appState: appState)
-                : OnboardingScreen(onComplete: appState.completeOnboarding),
+                : OnboardingScreen(
+                    onComplete: () async {
+                      await appState.completeOnboarding();
+                      await NotificationService.instance
+                          .scheduleDefaultDailyReminders();
+                    },
+                  ),
           );
         },
       ),
@@ -74,6 +80,12 @@ class _AppShellState extends State<AppShell> {
   final List<int> _tabHistory = [0];
   int _currentIndex = 0;
   bool _showEmergencyOverlay = false;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.instance.scheduleDefaultDailyReminders();
+  }
 
   void _navigateToTab(int index) {
     if (index == _currentIndex) return;

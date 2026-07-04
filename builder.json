@@ -1,0 +1,17 @@
+{
+  "project": "DealingWithAnxiety",
+  "platform": "ios",
+  "github": {
+    "owner": "Famez1000",
+    "repo": "gwen"
+  },
+  "ios": {
+    "path": "ios"
+  },
+  "flutter": {
+    "version": "3.44.0",
+    "watch": {}
+  },
+  "reactNative": {},
+  "mobai": {}
+}

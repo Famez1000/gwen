@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'core/state/app_state.dart';
 import 'core/services/gemini_service.dart';
 import 'core/services/notification_service.dart';
@@ -16,20 +18,48 @@ import 'features/journaling/presentation/journaling_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter startup/runtime error: ${details.exceptionAsString()}');
+  };
 
   // Create state singleton
   final appState = AppState();
   await appState.init();
-  await GeminiService.instance.initializeApiKey();
-  await NotificationService.instance.init();
+  await _runStartupStep(
+    'GeminiService.initializeApiKey',
+    GeminiService.instance.initializeApiKey,
+  );
+  unawaited(
+    _runStartupStep(
+      'NotificationService.init',
+      NotificationService.instance.init,
+    ),
+  );
 
   // Lock orientation to portrait for clean mobile layout
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  await _runStartupStep(
+    'SystemChrome.setPreferredOrientations',
+    () => SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]),
+  );
 
   runApp(StillnessApp(appState: appState));
+}
+
+Future<void> _runStartupStep(
+  String label,
+  Future<void> Function() action,
+) async {
+  try {
+    await action();
+  } catch (error, stackTrace) {
+    debugPrint('Startup step failed: $label');
+    debugPrint('$error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
 }
 
 class StillnessApp extends StatelessWidget {
@@ -56,8 +86,12 @@ class StillnessApp extends StatelessWidget {
                 : OnboardingScreen(
                     onComplete: () async {
                       await appState.completeOnboarding();
-                      await NotificationService.instance
-                          .scheduleDefaultDailyReminders();
+                      await _runStartupStep(
+                        'NotificationService.scheduleDefaultDailyReminders',
+                        NotificationService
+                            .instance
+                            .scheduleDefaultDailyReminders,
+                      );
                     },
                   ),
           );
@@ -84,7 +118,14 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-    NotificationService.instance.scheduleDefaultDailyReminders();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        _runStartupStep(
+          'NotificationService.scheduleDefaultDailyReminders',
+          NotificationService.instance.scheduleDefaultDailyReminders,
+        ),
+      );
+    });
   }
 
   void _navigateToTab(int index) {

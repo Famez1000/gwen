@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
@@ -60,6 +61,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _openChatAfterNextPurchaseUpdate = false;
   String? _storeMessage;
 
+  String get _storeName {
+    return defaultTargetPlatform == TargetPlatform.iOS
+        ? 'App Store'
+        : 'Google Play';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -101,7 +108,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _isStoreAvailable = false;
           _isLoadingProducts = false;
           _productsById = {};
-          _storeMessage = 'Google Play billing is not available right now.';
+          _storeMessage = '$_storeName billing is not available right now.';
         });
         return;
       }
@@ -132,16 +139,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _storeMessage = errorMessage;
         } else if (missingIds.isNotEmpty) {
           _storeMessage =
-              'Missing products in Google Play: ${missingIds.join(', ')}';
+              'Missing products in $_storeName: ${missingIds.join(', ')}';
         } else if (productsById.isEmpty) {
           _storeMessage =
-              'No subscription products were returned by Google Play.';
+              'No subscription products were returned by $_storeName.';
         } else {
           _storeMessage = null;
         }
       });
 
       await _restoreExistingSubscriptionIfNeeded(silent: true);
+    } on PlatformException catch (error) {
+      _addDebugLine(
+        'loadProducts platform exception: code=${error.code}, '
+        'message=${error.message}, details=${error.details}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _isStoreAvailable = false;
+        _isLoadingProducts = false;
+        _productsById = {};
+        _storeMessage =
+            error.message ??
+            'Could not load subscriptions from $_storeName. Please try again.';
+      });
     } catch (error) {
       _addDebugLine('loadProducts exception: $error');
       if (!mounted) return;
@@ -149,7 +170,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _isStoreAvailable = false;
         _isLoadingProducts = false;
         _productsById = {};
-        _storeMessage = 'Could not load subscriptions. Please try again.';
+        _storeMessage =
+            'Could not load subscriptions from $_storeName. Please try again.';
       });
     }
   }
@@ -198,7 +220,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           if (mounted) {
             setState(() {
               _isPurchasePending = true;
-              _storeMessage = 'Waiting for Google Play to finish the purchase.';
+              _storeMessage = 'Waiting for $_storeName to finish the purchase.';
             });
           }
           break;
@@ -288,6 +310,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       } else if (started) {
         _startPurchaseFlowTimeout();
       }
+    } on PlatformException catch (error) {
+      _addDebugLine(
+        'buy platform exception: code=${error.code}, '
+        'message=${error.message}, details=${error.details}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _isPurchasePending = false;
+        _openChatAfterNextPurchaseUpdate = false;
+        _storeMessage = error.message ?? 'Could not start the purchase flow.';
+      });
     } catch (error) {
       _addDebugLine('buy exception: $error');
       if (!mounted) return;
@@ -340,7 +373,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     setState(() {
       _isPurchasePending = true;
       _openChatAfterNextPurchaseUpdate = false;
-      _storeMessage = 'Checking Google Play for previous purchases...';
+      _storeMessage = 'Checking $_storeName for previous purchases...';
     });
 
     try {
@@ -350,7 +383,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       setState(() {
         _isPurchasePending = false;
         _storeMessage =
-            'Restore request sent. Google Play will return any active purchase.';
+            'Restore request sent. $_storeName will return any active purchase.';
       });
     } catch (error) {
       _addDebugLine('manual restore exception: $error');

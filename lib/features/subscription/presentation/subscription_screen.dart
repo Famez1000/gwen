@@ -24,11 +24,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   static final Uri _termsUrl = Uri.parse(
     'https://mlmasters.com/TermsAndConditions_Gwen.html',
   );
-  static const Set<String> _productIds = {'gwen_monthly', 'gwen_yearly'};
-  static const Map<_SubscriptionPlan, String> _productIdByPlan = {
-    _SubscriptionPlan.monthly: 'gwen_monthly',
-    _SubscriptionPlan.yearly: 'gwen_yearly',
-  };
+  static Set<String> get _productIds => _productIdByPlan.values.toSet();
+  static Map<_SubscriptionPlan, String> get _productIdByPlan {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return const {
+        _SubscriptionPlan.monthly: 'GWEN_MONTHLY',
+        _SubscriptionPlan.yearly: 'GWEN_YEARLY',
+      };
+    }
+
+    return const {
+      _SubscriptionPlan.monthly: 'gwen_monthly',
+      _SubscriptionPlan.yearly: 'gwen_yearly',
+    };
+  }
+
   static const Map<_SubscriptionPlan, List<String>> _preferredTrialMarkers = {
     _SubscriptionPlan.monthly: [
       'gwen-monthly-trial',

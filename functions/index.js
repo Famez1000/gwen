@@ -1,10 +1,20 @@
 const {onRequest} = require("firebase-functions/v2/https");
+const {onMessagePublished} = require("firebase-functions/v2/pubsub");
 const {defineSecret} = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
+const {GoogleAuth} = require("google-auth-library");
 require("firebase-admin/app");
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const model = "gemini-2.5-flash";
+const playRtdnTopic = "play-rtdn";
+const defaultPlayPackageName = "nl.mlmasters.anxietyslayer";
+const androidPublisherScope = "https://www.googleapis.com/auth/androidpublisher";
+const reviewRefundPreference = "NEUTRAL";
+
+const playAuth = new GoogleAuth({
+  scopes: [androidPublisherScope],
+});
 
 exports.gwenAi = onRequest(
   {
@@ -32,6 +42,134 @@ exports.gwenAi = onRequest(
     }
   },
 );
+
+exports.googlePlayRtdn = onMessagePublished(
+  {
+    topic: playRtdnTopic,
+    timeoutSeconds: 60,
+    memory: "256MiB",
+    retry: true,
+  },
+  async (event) => {
+    const message = event.data.message;
+    const notification = message.json;
+
+    logger.info("Received Google Play RTDN.", {
+      messageId: message.messageId,
+      packageName: notification.packageName,
+      eventTimeMillis: notification.eventTimeMillis,
+      notificationKind: notificationKind(notification),
+    });
+
+    const expectedPackageName = getPlayPackageName();
+    if (notification.packageName !== expectedPackageName) {
+      logger.warn("Ignoring RTDN for unexpected package.", {
+        expectedPackageName,
+        receivedPackageName: notification.packageName,
+      });
+      return;
+    }
+
+    if (!notification.pendingRefundReviewNotification) {
+      logger.info("RTDN does not require refund review.", {
+        notificationKind: notificationKind(notification),
+      });
+      return;
+    }
+
+    await reviewPendingRefund(notification);
+  },
+);
+
+async function reviewPendingRefund(notification) {
+  const pendingReview = notification.pendingRefundReviewNotification;
+  const requestBody = buildReviewRefundRequest(notification);
+  const packageName = notification.packageName;
+  const orderId = requireString(pendingReview.orderId, "orderId");
+  const url =
+    `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/` +
+    `${encodeURIComponent(packageName)}/orders/${encodeURIComponent(orderId)}` +
+    `:reviewrefund`;
+
+  const headers = await playAuth.getRequestHeaders(url);
+  const response = await fetch(
+    url,
+    {
+      method: "POST",
+      headers: {
+        ...toPlainHeaders(headers),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    },
+  );
+
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(
+      `ReviewRefund failed for ${orderId}: ${response.status} ${responseText}`,
+    );
+  }
+
+  logger.info("Submitted Google Play refund review suggestion.", {
+    orderId,
+    refundPreference: requestBody.refundPreference,
+    usageEventCount: requestBody.consumptionUsageEvents?.length ?? 0,
+  });
+}
+
+function buildReviewRefundRequest(notification) {
+  const pendingReview = notification.pendingRefundReviewNotification;
+  const usageEvents = buildConsumptionUsageEvents(notification);
+  const requestBody = {
+    pendingRefundToken: requireString(
+      pendingReview.pendingRefundToken,
+      "pendingRefundToken",
+    ),
+    sampleContentProvided: true,
+    refundPreference: reviewRefundPreference,
+  };
+
+  if (usageEvents.length > 0) {
+    requestBody.consumptionUsageEvents = usageEvents;
+  }
+
+  return requestBody;
+}
+
+function buildConsumptionUsageEvents() {
+  return [];
+}
+
+function notificationKind(notification) {
+  if (notification.pendingRefundReviewNotification) {
+    return "pendingRefundReviewNotification";
+  }
+  if (notification.subscriptionNotification) {
+    return "subscriptionNotification";
+  }
+  if (notification.oneTimeProductNotification) {
+    return "oneTimeProductNotification";
+  }
+  if (notification.voidedPurchaseNotification) {
+    return "voidedPurchaseNotification";
+  }
+  if (notification.testNotification) {
+    return "testNotification";
+  }
+  return "unknown";
+}
+
+function toPlainHeaders(headers) {
+  if (headers && typeof headers.entries === "function") {
+    return Object.fromEntries(headers.entries());
+  }
+  return headers || {};
+}
+
+function getPlayPackageName() {
+  return process.env.PLAY_PACKAGE_NAME || defaultPlayPackageName;
+}
 
 function buildGeminiBody(operation, payload) {
   switch (operation) {

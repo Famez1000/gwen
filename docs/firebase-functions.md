@@ -58,6 +58,36 @@ GWEN_AI_FUNCTION_URL=https://gwenai-bf2iljcfjq-uc.a.run.app
 The current `codemagic.yaml` passes this variable to Flutter with
 `--dart-define`.
 
+## Google Play refund review RTDN
+
+The `googlePlayRtdn` function listens for Google Play Real-time Developer
+Notifications on the Pub/Sub topic `play-rtdn`. When Google sends a
+`pendingRefundReviewNotification`, the function calls the Android Publisher
+`orders.reviewrefund` API with a neutral refund preference.
+
+Deploy it with:
+
+```bash
+firebase deploy --only functions:googlePlayRtdn --force
+```
+
+One-time Play/Firebase setup:
+
+1. Create or select a Pub/Sub topic named `play-rtdn` in the Firebase
+   project.
+2. In Play Console, enable Real-time Developer Notifications for Gwen and set
+   the topic to `projects/mijnfb-c0a3b/topics/play-rtdn`.
+3. Enable the Google Play Android Developer API in the Google Cloud project.
+4. Give the Cloud Functions runtime service account permission to call the
+   Android Publisher API for the Play Console app.
+5. If the package name ever changes, set the function environment variable
+   `PLAY_PACKAGE_NAME`; otherwise it defaults to `nl.mlmasters.anxietyslayer`.
+
+The current implementation does not yet store a server-side purchase ledger, so
+it cannot automatically submit detailed usage history. Add backend purchase
+verification and entitlement records later if you want stronger evidence than a
+neutral response.
+
 ## Security Notes
 
 - Do not commit `apikey.txt`, `.env`, keystores, or Firebase secret values.

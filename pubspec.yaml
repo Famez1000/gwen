@@ -46,6 +46,7 @@ dependencies:
   package_info_plus: ^10.1.0
   in_app_purchase: ^3.3.0
   in_app_purchase_android: ^0.5.1
+  youtube_player_flutter: ^10.0.1
 
 dev_dependencies:
   flutter_test:

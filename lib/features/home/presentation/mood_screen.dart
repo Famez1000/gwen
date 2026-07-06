@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../breathing/presentation/breathing_screen.dart';
@@ -499,13 +499,23 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
       return;
     }
 
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-    if (!launched && mounted) {
+    final videoId = _youtubeVideoId(uri);
+    if (videoId == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open your song link.')),
+        const SnackBar(
+          content: Text('Please enter a valid YouTube video URL.'),
+        ),
       );
+      await _editFavoriteSongUrl();
+      return;
     }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _FavoriteSongPlayerDialog(videoId: videoId),
+    );
   }
 
   Future<bool> _editFavoriteSongUrl() async {
@@ -551,6 +561,38 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
         host == 'youtu.be';
 
     return isYoutube ? uri : null;
+  }
+
+  String? _youtubeVideoId(Uri uri) {
+    final host = uri.host.toLowerCase();
+    if (host == 'youtu.be') {
+      final id = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first;
+      return _normalizeYoutubeId(id);
+    }
+
+    final queryId = _normalizeYoutubeId(uri.queryParameters['v']);
+    if (queryId != null) return queryId;
+
+    final segments = uri.pathSegments;
+    final shortsIndex = segments.indexOf('shorts');
+    if (shortsIndex != -1 && shortsIndex + 1 < segments.length) {
+      return _normalizeYoutubeId(segments[shortsIndex + 1]);
+    }
+
+    final embedIndex = segments.indexOf('embed');
+    if (embedIndex != -1 && embedIndex + 1 < segments.length) {
+      return _normalizeYoutubeId(segments[embedIndex + 1]);
+    }
+
+    return null;
+  }
+
+  String? _normalizeYoutubeId(String? id) {
+    final normalized = id?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    return RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(normalized)
+        ? normalized
+        : null;
   }
 
   void _openExercise(Widget screen) {
@@ -743,6 +785,77 @@ class _FavoriteSongCard extends StatelessWidget {
             onPressed: onEditFavoriteSongUrl,
             icon: const Icon(Icons.smart_display_rounded),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FavoriteSongPlayerDialog extends StatefulWidget {
+  final String videoId;
+
+  const _FavoriteSongPlayerDialog({required this.videoId});
+
+  @override
+  State<_FavoriteSongPlayerDialog> createState() =>
+      _FavoriteSongPlayerDialogState();
+}
+
+class _FavoriteSongPlayerDialogState extends State<_FavoriteSongPlayerDialog> {
+  late final YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = YoutubePlayerController.fromVideoId(
+      videoId: widget.videoId,
+      autoPlay: true,
+      params: const YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            color: isDark ? const Color(0xFF0F131E) : Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Favorite song',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          YoutubePlayer(controller: _controller),
         ],
       ),
     );

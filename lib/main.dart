@@ -81,9 +81,13 @@ class StillnessApp extends StatelessWidget {
             themeMode: appState.themeModeIndex == 2
                 ? ThemeMode.dark
                 : ThemeMode.light,
-            home: appState.onboardingCompleted
+            home:
+                appState.onboardingCompleted && appState.healDisclaimerAccepted
                 ? AppShell(appState: appState)
                 : OnboardingScreen(
+                    showIntroPages: !appState.onboardingCompleted,
+                    onAcceptTerms: appState.acceptHealDisclaimer,
+                    onNameSubmitted: appState.setUserName,
                     onComplete: () async {
                       await appState.completeOnboarding();
                       await _runStartupStep(

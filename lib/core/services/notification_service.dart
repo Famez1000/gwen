@@ -229,7 +229,7 @@ class NotificationService {
       channelDescription: _channelDescription,
       importance: Importance.high,
       priority: Priority.high,
-      ticker: 'Gwen reminder',
+      ticker: 'Gwyn reminder',
     );
 
     const darwinDetails = DarwinNotificationDetails();

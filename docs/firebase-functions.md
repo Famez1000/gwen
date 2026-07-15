@@ -1,6 +1,6 @@
-# Firebase Cloud Functions for Gwen AI
+# Firebase Cloud Functions for Gwyn AI
 
-Gwen should not ship the Gemini API key inside the mobile app. The app calls a
+Gwyn should not ship the Gemini API key inside the mobile app. The app calls a
 Firebase HTTPS Cloud Function, and the function reads `GEMINI_API_KEY` from
 Firebase secrets.
 
@@ -35,8 +35,7 @@ After deployment, Firebase prints an HTTPS URL for `gwenAi`. Use that URL as
 the app's `GWEN_AI_FUNCTION_URL`.
 Function URL (gwenAi(us-central1)): https://gwenai-bf2iljcfjq-uc.a.run.app 
 
-## Local build
-
+## Build for deploy:
 For Android:
 ```bash
 flutter build appbundle --release --dart-define=GWEN_AI_FUNCTION_URL=https://gwenai-bf2iljcfjq-uc.a.run.app
@@ -75,7 +74,7 @@ One-time Play/Firebase setup:
 
 1. Create or select a Pub/Sub topic named `play-rtdn` in the Firebase
    project.
-2. In Play Console, enable Real-time Developer Notifications for Gwen and set
+2. In Play Console, enable Real-time Developer Notifications for Gwyn and set
    the topic to `projects/mijnfb-c0a3b/topics/play-rtdn`.
 3. Enable the Google Play Android Developer API in the Google Cloud project.
 4. Give the Cloud Functions runtime service account permission to call the
@@ -104,5 +103,5 @@ _sendGeminiResponse() calls either generateGwenResponse() or generateContextualG
 GeminiService posts JSON like { operation, payload } to the Firebase function URL at [gemini_service.dart (line 81)](/d:/Antigravity/DealingWithAnxiety/lib/core/services/gemini_service.dart:81).
 Firebase gwenAi receives the request, builds the Gemini prompt/body based on operation, then calls Gemini with the secret key at [functions/index.js (line 9)](/d:/Antigravity/DealingWithAnxiety/functions/index.js:9).
 Firebase returns { text }.
-Flutter parses text and adds Gwen’s reply to the chat. If the request fails, ChatScreen falls back to a local canned supportive response.
-So: app users never receive the Gemini key. They only hit your Firebase function. The current Gwen image tap mostly gates users into SubscriptionScreen; AI starts when a feature calls GeminiService.
+Flutter parses text and adds Gwyn’s reply to the chat. If the request fails, ChatScreen falls back to a local canned supportive response.
+So: app users never receive the Gemini key. They only hit your Firebase function. The current Gwyn image tap mostly gates users into SubscriptionScreen; AI starts when a feature calls GeminiService.

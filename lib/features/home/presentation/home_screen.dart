@@ -67,10 +67,15 @@ class HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 44),
+                const SizedBox(height: 64),
                 GestureDetector(
                   onTap: () {
-                    openGwenChatOrSubscription(context);
+                    openGwynChatOrSubscription(
+                      context,
+                      previewBeforeSubscription: true,
+                      previewDialogMessage:
+                          'Here you can chat with Gwyn using AI. This preview uses built-in example responses so you can see how Gwyn replies before subscribing.',
+                    );
                   },
                   child: Image.asset(
                     'assets/images/gwen_relaxed.png',
@@ -259,12 +264,12 @@ class _AnimatedGreetingState extends State<AnimatedGreeting> {
   int _currentIndex = 0;
 
   List<String> get _lines {
-    return ['Gwen here', "How's it going?"];
+    return ['Gwyn here', "How's it going?"];
   }
 
   String get _weGotThisLine {
     final trimmedName = widget.userName.trim();
-    final namePart = trimmedName.isEmpty ? '' : ' $trimmedName';
+    final namePart = trimmedName.isEmpty ? ', my friend' : ' $trimmedName';
     return 'We got this$namePart';
   }
 
@@ -322,12 +327,15 @@ class _AnimatedGreetingState extends State<AnimatedGreeting> {
                       ),
                     ],
                   )
-                : Text(
-                    '\n${_lines[index]}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                : Padding(
+                    padding: const EdgeInsets.only(top: 15),
+                    child: Text(
+                      _lines[index],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
           ),
@@ -375,7 +383,7 @@ class _NamePromptDialogState extends State<_NamePromptDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Gwen will use this name when speaking with you.',
+            'She will use this name when speaking with you.',
             style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
           ),
           const SizedBox(height: 18),

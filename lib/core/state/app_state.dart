@@ -50,12 +50,18 @@ class AppState extends ChangeNotifier {
   String _emergencyContactPhone = '911';
   bool _onboardingCompleted = false;
   String _userName = '';
+  String _profileImageBase64 = '';
   String _moodRealityText = '';
   String _moodFavoriteSongUrl = '';
+  bool _hideMoodEntryPopup = false;
   bool _healDisclaimerAccepted = false;
+  bool _hideHealMethodsMessage = false;
+  bool _hideUnderstandMethodsMessage = false;
+  bool _hideCopeMethodsMessage = false;
   bool _storeSubscriptionActive = false;
   bool _debugSubscriptionActive = false;
-  List<String> _recentGwenJokes = [];
+  bool _drawingGuessFreeRequestUsed = false;
+  List<String> _recentGwynJokes = [];
   List<String> _groundingObjects = List.of(defaultGroundingObjects);
   List<String> _groundingTouchObjects = List.of(defaultGroundingTouchObjects);
   List<String> _groundingSoundObjects = List.of(defaultGroundingSoundObjects);
@@ -80,12 +86,20 @@ class AppState extends ChangeNotifier {
   String get emergencyContactPhone => _emergencyContactPhone;
   bool get onboardingCompleted => _onboardingCompleted;
   String get userName => _userName;
+  String get profileImageBase64 => _profileImageBase64;
   String get moodRealityText => _moodRealityText;
   String get moodFavoriteSongUrl => _moodFavoriteSongUrl;
+  bool get hideMoodEntryPopup => _hideMoodEntryPopup;
   bool get healDisclaimerAccepted => _healDisclaimerAccepted;
+  bool get hideHealMethodsMessage => _hideHealMethodsMessage;
+  bool get hideUnderstandMethodsMessage => _hideUnderstandMethodsMessage;
+  bool get hideCopeMethodsMessage => _hideCopeMethodsMessage;
   bool get hasActiveSubscription =>
       _storeSubscriptionActive || (kDebugMode && _debugSubscriptionActive);
-  List<String> get recentGwenJokes => List.unmodifiable(_recentGwenJokes);
+  bool get hasStoreSubscription => _storeSubscriptionActive;
+  bool get hasDebugSubscription => kDebugMode && _debugSubscriptionActive;
+  bool get drawingGuessFreeRequestUsed => _drawingGuessFreeRequestUsed;
+  List<String> get recentGwynJokes => List.unmodifiable(_recentGwynJokes);
   List<String> get groundingObjects => List.unmodifiable(_groundingObjects);
   List<String> get groundingTouchObjects =>
       List.unmodifiable(_groundingTouchObjects);
@@ -119,12 +133,18 @@ class AppState extends ChangeNotifier {
     _themeModeIndex = _storage.getThemeMode();
     _onboardingCompleted = _storage.getOnboardingCompleted();
     _userName = _storage.getUserName();
+    _profileImageBase64 = _storage.getProfileImageBase64();
     _moodRealityText = _storage.getMoodRealityText();
     _moodFavoriteSongUrl = _storage.getMoodFavoriteSongUrl();
-    _recentGwenJokes = _storage.getRecentGwenJokes();
+    _hideMoodEntryPopup = _storage.getHideMoodEntryPopup();
+    _recentGwynJokes = _storage.getRecentGwynJokes();
     _healDisclaimerAccepted = _storage.getHealDisclaimerAccepted();
+    _hideHealMethodsMessage = _storage.getHideHealMethodsMessage();
+    _hideUnderstandMethodsMessage = _storage.getHideUnderstandMethodsMessage();
+    _hideCopeMethodsMessage = _storage.getHideCopeMethodsMessage();
     _storeSubscriptionActive = _storage.getStoreSubscriptionActive();
     _debugSubscriptionActive = _storage.getDebugSubscriptionActive();
+    _drawingGuessFreeRequestUsed = _storage.getDrawingGuessFreeRequestUsed();
     final savedGroundingObjects = _storage.getGroundingObjects();
     _groundingObjects = _normalizeGroundingObjects(savedGroundingObjects);
     final savedGroundingTouchObjects = _storage.getGroundingTouchObjects();
@@ -277,21 +297,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> rememberGwenJoke(String joke) async {
+  Future<void> rememberGwynJoke(String joke) async {
     final trimmed = joke.trim();
     if (trimmed.isEmpty) return;
 
-    _recentGwenJokes
+    _recentGwynJokes
       ..removeWhere(
         (existing) => existing.trim().toLowerCase() == trimmed.toLowerCase(),
       )
       ..insert(0, trimmed);
 
-    if (_recentGwenJokes.length > 10) {
-      _recentGwenJokes = _recentGwenJokes.sublist(0, 10);
+    if (_recentGwynJokes.length > 10) {
+      _recentGwynJokes = _recentGwynJokes.sublist(0, 10);
     }
 
-    await _storage.setRecentGwenJokes(_recentGwenJokes);
+    await _storage.setRecentGwynJokes(_recentGwynJokes);
     notifyListeners();
   }
 
@@ -340,6 +360,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setProfileImageBase64(String imageBase64) async {
+    _profileImageBase64 = imageBase64;
+    await _storage.setProfileImageBase64(imageBase64);
+    notifyListeners();
+  }
+
   Future<void> setMoodRealityText(String text) async {
     if (_moodRealityText == text) return;
 
@@ -354,6 +380,14 @@ class AppState extends ChangeNotifier {
 
     _moodFavoriteSongUrl = trimmed;
     await _storage.setMoodFavoriteSongUrl(trimmed);
+    notifyListeners();
+  }
+
+  Future<void> setHideMoodEntryPopup(bool hidden) async {
+    if (_hideMoodEntryPopup == hidden) return;
+
+    _hideMoodEntryPopup = hidden;
+    await _storage.setHideMoodEntryPopup(hidden);
     notifyListeners();
   }
 
@@ -390,6 +424,46 @@ class AppState extends ChangeNotifier {
 
     _healDisclaimerAccepted = true;
     await _storage.setHealDisclaimerAccepted(true);
+    notifyListeners();
+  }
+
+  Future<void> setHideHealMethodsMessage(bool hidden) async {
+    if (_hideHealMethodsMessage == hidden) return;
+
+    _hideHealMethodsMessage = hidden;
+    await _storage.setHideHealMethodsMessage(hidden);
+    notifyListeners();
+  }
+
+  Future<void> setHideUnderstandMethodsMessage(bool hidden) async {
+    if (_hideUnderstandMethodsMessage == hidden) return;
+
+    _hideUnderstandMethodsMessage = hidden;
+    await _storage.setHideUnderstandMethodsMessage(hidden);
+    notifyListeners();
+  }
+
+  Future<void> setHideCopeMethodsMessage(bool hidden) async {
+    if (_hideCopeMethodsMessage == hidden) return;
+
+    _hideCopeMethodsMessage = hidden;
+    await _storage.setHideCopeMethodsMessage(hidden);
+    notifyListeners();
+  }
+
+  Future<void> useDrawingGuessFreeRequest() async {
+    if (_drawingGuessFreeRequestUsed) return;
+
+    _drawingGuessFreeRequestUsed = true;
+    await _storage.setDrawingGuessFreeRequestUsed(true);
+    notifyListeners();
+  }
+
+  Future<void> resetDrawingGuessFreeRequestForDebug() async {
+    if (!kDebugMode || !_drawingGuessFreeRequestUsed) return;
+
+    _drawingGuessFreeRequestUsed = false;
+    await _storage.setDrawingGuessFreeRequestUsed(false);
     notifyListeners();
   }
 

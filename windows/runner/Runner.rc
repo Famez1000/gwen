@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.antigravity.gwen" "\0"
-            VALUE "FileDescription", "Gwen" "\0"
+            VALUE "FileDescription", "Gwyn" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "gwen" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.antigravity.gwen. All rights reserved." "\0"
             VALUE "OriginalFilename", "gwen.exe" "\0"
-            VALUE "ProductName", "Gwen" "\0"
+            VALUE "ProductName", "Gwyn" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

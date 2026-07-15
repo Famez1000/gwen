@@ -61,20 +61,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _OnboardingPageData(
       title: 'Cope',
       description:
-          'Panic and anxiety attacks can feel like your mind is spiraling out of control. No matter how intense they become, Cope helps you break the cycle by distracting your mind with upbeat music, games, jokes, and engaging stories',
+          'Panic and anxiety attacks can feel like your mind is spiraling out of control. No matter how intense they become, the cope exercises help you break the cycle by distracting your mind',
       icon: Icons.spa_rounded,
     ),
     _OnboardingPageData(
       title: 'Understand',
       description:
-          'Understand what is really happening in your mind. There is a reason you feel anxious. Once you understand why, healing can begin. Explore your mind with these powerful tools',
+          'Understand what is really happening in your mind. There is a reason you feel anxious. Once you understand the reason why, healing can begin. Explore your mind using Gwyn\'s effective tools',
       icon: Icons.lightbulb_rounded,
     ),
     _OnboardingPageData(
       title: 'Heal',
       description:
-          'Healing anxiety takes courage. It means facing the fears you have been avoiding. This is not an easy path, but Gwyn will be with you every step of the way. The courage to move forward, however, must come from you',
-      icon: Icons.hub_rounded,
+          'Healing anxiety takes courage. It means facing the fears that have been holding you back. This journey isn\'t easy, but Gwyn will stand by your side every step of the way. The courage to move forward, however, must come from within you',
+      iconAsset: 'assets/images/resilient-health.png',
     ),
   ];
 
@@ -96,7 +96,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _handlePrimaryAction() async {
     if (_currentPage < _termsPageIndex) {
       if (widget.showIntroPages && _currentPage == _namePageIndex) {
-        await _submitNameIfPresent();
+        await _submitNameIfPresent(useDefaultName: true);
       }
 
       await _pageController.nextPage(
@@ -114,8 +114,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await widget.onComplete();
   }
 
-  Future<void> _submitNameIfPresent() async {
-    final name = _nameController.text.trim();
+  Future<void> _submitNameIfPresent({bool useDefaultName = false}) async {
+    final typedName = _nameController.text.trim();
+    final name = typedName.isEmpty && useDefaultName ? 'My Friend' : typedName;
     if (name.isEmpty || name == _submittedName) return;
 
     _submittedName = name;
@@ -337,7 +338,13 @@ class _FeatureOnboardingPage extends StatelessWidget {
                       color: Colors.white.withAlpha(224),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(page.icon, color: primaryColor, size: 32),
+                    child: page.iconAsset == null
+                        ? Icon(page.icon, color: primaryColor, size: 32)
+                        : ImageIcon(
+                            AssetImage(page.iconAsset!),
+                            color: primaryColor,
+                            size: 34,
+                          ),
                   ),
                   const SizedBox(height: 22),
                   Text(
@@ -556,7 +563,7 @@ class _GwynBackgroundPage extends StatelessWidget {
             Positioned(
               left: 28,
               right: 28,
-              top: 356,
+              top: 250,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -572,6 +579,7 @@ class _GwynBackgroundPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   const _OnboardingBullet(
                     icon: Icons.hub_rounded,
+                    iconAsset: 'assets/images/resilient-health.png',
                     label: 'Heal',
                   ),
                 ],
@@ -586,9 +594,14 @@ class _GwynBackgroundPage extends StatelessWidget {
 
 class _OnboardingBullet extends StatelessWidget {
   final IconData icon;
+  final String? iconAsset;
   final String label;
 
-  const _OnboardingBullet({required this.icon, required this.label});
+  const _OnboardingBullet({
+    required this.icon,
+    required this.label,
+    this.iconAsset,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -608,7 +621,13 @@ class _OnboardingBullet extends StatelessWidget {
               color: const Color(0xFFFAF8F5),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: Theme.of(context).primaryColor, size: 25),
+            child: iconAsset == null
+                ? Icon(icon, color: Theme.of(context).primaryColor, size: 25)
+                : ImageIcon(
+                    AssetImage(iconAsset!),
+                    color: Theme.of(context).primaryColor,
+                    size: 26,
+                  ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -638,23 +657,23 @@ class _NameOnboardingPage extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
-    final imageSize = keyboardVisible ? 86.0 : 125.0;
-    final titleSize = keyboardVisible ? 25.0 : 30.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final compact = keyboardVisible || constraints.maxHeight < 520;
+        final imageSize = compact ? 56.0 : 125.0;
+        final titleSize = compact ? 19.8 : 27.0;
+
         return SingleChildScrollView(
-          padding: EdgeInsets.only(bottom: keyboardVisible ? 12 : 0),
+          padding: EdgeInsets.only(bottom: compact ? 12 : 0),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Align(
-              alignment: keyboardVisible
-                  ? Alignment.center
-                  : const Alignment(0, -0.2),
+              alignment: compact ? Alignment.center : const Alignment(0, -0.2),
               child: _ImageOnboardingFrame(
                 height: constraints.maxHeight,
                 child: GlassCard(
-                  padding: EdgeInsets.all(keyboardVisible ? 20 : 28),
+                  padding: EdgeInsets.all(compact ? 14 : 28),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -664,7 +683,7 @@ class _NameOnboardingPage extends StatelessWidget {
                         height: imageSize,
                         fit: BoxFit.contain,
                       ),
-                      SizedBox(height: keyboardVisible ? 16 : 24),
+                      SizedBox(height: compact ? 10 : 24),
                       Text(
                         'How shall I call you?',
                         textAlign: TextAlign.center,
@@ -676,25 +695,29 @@ class _NameOnboardingPage extends StatelessWidget {
                               height: 1.1,
                             ),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'You can leave this empty.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white70
-                              : Colors.black.withAlpha(166),
-                          fontSize: 15,
-                          height: 1.4,
-                        ),
-                      ),
-                      SizedBox(height: keyboardVisible ? 14 : 22),
+                      SizedBox(height: compact ? 12 : 22),
                       TextField(
                         controller: controller,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.done,
+                        style: const TextStyle(height: 1.2),
+                        textAlignVertical: TextAlignVertical.center,
                         decoration: InputDecoration(
-                          labelText: 'Your name',
+                          hintText: 'My Friend',
+                          hintStyle: TextStyle(
+                            color: isDark
+                                ? Colors.white.withAlpha(115)
+                                : Colors.black.withAlpha(115),
+                            height: 1.2,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 15,
+                          ),
+                          prefixIconConstraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
                           prefixIcon: Icon(
                             Icons.person_rounded,
                             color: primaryColor,
@@ -821,10 +844,10 @@ class _LegalLinksText extends StatelessWidget {
 
 class _TermsAndConditionsPage extends StatelessWidget {
   static final Uri _termsUrl = Uri.parse(
-    'https://mlmasters.com/TermsAndConditions_Gwen.html',
+    'https://mlmasters.com/TermsAndConditions_Gwyn.html',
   );
   static final Uri _privacyUrl = Uri.parse(
-    'https://mlmasters.com/PrivacyPolicy_Gwen.html',
+    'https://mlmasters.com/PrivacyPolicy_Gwyn.html',
   );
 
   const _TermsAndConditionsPage();
@@ -906,17 +929,22 @@ class _TermsAndConditionsPage extends StatelessWidget {
 
                           final text =
                               snapshot.data ??
-                              'These exercises are supportive tools and are not a substitute for professional or emergency care.';
+                              'The exercises in this appare supportive tools and are not a substitute for professional or emergency care.';
 
                           return SingleChildScrollView(
-                            child: Text(
-                              text,
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.white.withAlpha(217)
-                                    : Colors.black.withAlpha(191),
-                                fontSize: 15.5,
-                                height: 1.45,
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                text,
+                                softWrap: true,
+                                overflow: TextOverflow.visible,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white.withAlpha(217)
+                                      : Colors.black.withAlpha(191),
+                                  fontSize: 17,
+                                  height: 1.45,
+                                ),
                               ),
                             ),
                           );
@@ -945,12 +973,14 @@ class _OnboardingPageData {
   final String title;
   final String description;
   final IconData? icon;
+  final String? iconAsset;
   final String? imageAsset;
 
   const _OnboardingPageData({
     required this.title,
     required this.description,
     this.icon,
+    this.iconAsset,
     this.imageAsset,
   });
 }

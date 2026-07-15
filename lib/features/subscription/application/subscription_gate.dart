@@ -5,13 +5,16 @@ import '../../../core/state/app_state.dart';
 import '../../chat/presentation/chat_screen.dart';
 import '../presentation/subscription_screen.dart';
 
-void openGwenChatOrSubscription(
+void openGwynChatOrSubscription(
   BuildContext context, {
-  String title = 'Chat with Gwen',
+  String title = 'Chat with Gwyn',
   String welcomeMessage =
-      "Halt! I am Gwen, your anxiety-support companion. What's bothering you?",
+      "Halt! I am Gwyn, your anxiety-support companion. What's bothering you?",
   String? pageContext,
   List<String>? suggestedPrompts,
+  bool showGwynHeader = true,
+  bool previewBeforeSubscription = false,
+  String? previewDialogMessage,
 }) {
   final appState = context.read<AppState>();
   final screen = appState.hasActiveSubscription
@@ -21,6 +24,18 @@ void openGwenChatOrSubscription(
           welcomeMessage: welcomeMessage,
           pageContext: pageContext,
           suggestedPrompts: suggestedPrompts,
+          showGwynHeader: showGwynHeader,
+        )
+      : previewBeforeSubscription
+      ? ChatScreen(
+          appState: appState,
+          title: title,
+          welcomeMessage: welcomeMessage,
+          pageContext: pageContext,
+          suggestedPrompts: suggestedPrompts,
+          showGwynHeader: showGwynHeader,
+          isPreview: true,
+          previewDialogMessage: previewDialogMessage,
         )
       : const SubscriptionScreen();
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/services/gemini_service.dart';
+import '../../subscription/presentation/subscription_screen.dart';
 
 class ChatMessage {
   final String text;
@@ -23,19 +24,23 @@ class ChatScreen extends StatefulWidget {
   final String title;
   final String welcomeMessage;
   final String? pageContext;
-  final bool showGwenHeader;
+  final bool showGwynHeader;
   final List<String>? suggestedPrompts;
+  final bool isPreview;
+  final String? previewDialogMessage;
 
   const ChatScreen({
     Key? key,
     required this.appState,
     this.onNavigateToTab,
-    this.title = 'Chat with Gwen',
+    this.title = 'Chat with Gwyn',
     this.welcomeMessage =
-        "Halt! I am Gwen, your anxiety-support companion. What's bothering you?",
+        "Halt! I am Gwyn, your anxiety-support companion. What's bothering you?",
     this.pageContext,
-    this.showGwenHeader = true,
+    this.showGwynHeader = true,
     this.suggestedPrompts,
+    this.isPreview = false,
+    this.previewDialogMessage,
   }) : super(key: key);
 
   @override
@@ -100,6 +105,13 @@ class _ChatScreenState extends State<ChatScreen>
         timestamp: DateTime.now().subtract(const Duration(seconds: 1)),
       ),
     );
+
+    if (widget.isPreview) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showPreviewDialog();
+      });
+    }
   }
 
   @override
@@ -149,7 +161,64 @@ class _ChatScreenState extends State<ChatScreen>
     _scrollToBottom();
     HapticFeedback.lightImpact();
 
-    _sendGeminiResponse(text);
+    if (widget.isPreview) {
+      _sendPreviewResponse(text);
+    } else {
+      _sendGeminiResponse(text);
+    }
+  }
+
+  Future<void> _sendPreviewResponse(String text) async {
+    await Future<void>.delayed(const Duration(milliseconds: 550));
+    if (!mounted) return;
+
+    setState(() {
+      _messages.add(
+        ChatMessage(
+          text: _generateTherapeuticResponse(text),
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+      _isTyping = false;
+    });
+    _scrollToBottom();
+    HapticFeedback.selectionClick();
+  }
+
+  void _openSubscription() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+    );
+  }
+
+  Future<void> _showPreviewDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Chat with Gwyn'),
+          content: Text(
+            widget.previewDialogMessage ??
+                'Here you can chat with Gwyn (using our trained AI system when subscribed). This preview uses standardized responses',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Try preview'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _openSubscription();
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _sendGeminiResponse(String text) async {
@@ -168,10 +237,10 @@ class _ChatScreenState extends State<ChatScreen>
         'Gemini response received chars=${responseText.length}, lines=${_lineCount(responseText)}, preview="${_preview(responseText)}"',
       );
     } catch (error) {
-      _debugLog('Gemini request failed; using local Gwen fallback: $error');
+      _debugLog('Gemini request failed; using local Gwyn fallback: $error');
       final fallbackText = _generateTherapeuticResponse(text);
       responseText = _showAiErrors
-          ? 'Gwen AI could not connect: $error\n\nLocal fallback:\n$fallbackText'
+          ? 'Gwyn AI could not connect: $error\n\nLocal fallback:\n$fallbackText'
           : fallbackText;
       _debugLog(
         'Fallback response chars=${responseText.length}, lines=${_lineCount(responseText)}, preview="${_preview(responseText)}"',
@@ -269,7 +338,7 @@ class _ChatScreenState extends State<ChatScreen>
     final defaultResponses = [
       'I hear you. ${trimmedInput.isEmpty ? 'That sounds like a lot to hold.' : 'When you say "$trimmedInput", it sounds like your mind wants some steadiness.'}\n\nTry this with me: breathe out slowly, soften your shoulders, and name one thing that is true and safe in this exact moment.',
       "Thank you for telling me. Let us make this smaller for a minute: what is the feeling, where is it in your body, and what would help by just 1 percent?\n\nYou do not need a perfect answer. One gentle next step counts.",
-      "Gwen is here. Let us pause the spiral and come back to the room: feel your feet, notice the light around you, and take one slow breath.\n\nNow choose one kind action for yourself, even if it is tiny.",
+      "Gwyn is here. Let us pause the spiral and come back to the room: feel your feet, notice the light around you, and take one slow breath.\n\nNow choose one kind action for yourself, even if it is tiny.",
     ];
     final selectedIndex =
         trimmedInput.codeUnits.fold<int>(0, (sum, codeUnit) => sum + codeUnit) %
@@ -295,7 +364,7 @@ class _ChatScreenState extends State<ChatScreen>
       body: SafeArea(
         child: Column(
           children: [
-            if (widget.showGwenHeader)
+            if (widget.showGwynHeader)
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16.0,
@@ -394,7 +463,7 @@ class _ChatScreenState extends State<ChatScreen>
                 child: Row(
                   children: [
                     Text(
-                      "Gwen is typing",
+                      "Gwyn is typing",
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark ? Colors.white70 : Colors.black54,
@@ -452,6 +521,23 @@ class _ChatScreenState extends State<ChatScreen>
                       ),
                     );
                   },
+                ),
+              ),
+
+            if (widget.isPreview)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.auto_awesome_rounded),
+                    label: const Text('Unlock AI chat with Gwyn'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    onPressed: _openSubscription,
+                  ),
                 ),
               ),
 

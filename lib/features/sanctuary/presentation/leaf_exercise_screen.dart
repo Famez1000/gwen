@@ -14,7 +14,7 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
   late final Future<void> _videoInit;
   bool _soundEnabled = false;
   bool _loopEnabled = true;
-  double _playbackSpeed = 0.5;
+  double _playbackSpeed = 0.75;
 
   @override
   void initState() {

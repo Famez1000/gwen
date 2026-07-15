@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../meditations/presentation/meditations_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
@@ -19,12 +21,47 @@ class HealScreen extends StatefulWidget {
 }
 
 class _HealScreenState extends State<HealScreen> {
-  void _openSubscription(BuildContext context) {
-    openGwenChatOrSubscription(
+  bool _isHealingPopupShowing = false;
+
+  @override
+  void didUpdateWidget(covariant HealScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!oldWidget.isActive && widget.isActive) {
+      _showHealingPopupAfterTabSelection();
+    }
+  }
+
+  void _showHealingPopupAfterTabSelection() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isHealingPopupShowing) return;
+
+      final appState = context.read<AppState>();
+      if (appState.hideHealMethodsMessage) return;
+
+      _isHealingPopupShowing = true;
+      _showHealingMethodsDialog(appState).whenComplete(() {
+        _isHealingPopupShowing = false;
+      });
+    });
+  }
+
+  void _openGwynChat(BuildContext context) {
+    openGwynChatOrSubscription(
       context,
-      title: 'Heal with Gwen',
+      title: 'Heal with Gwyn',
       pageContext:
-          'The user opened Gwen from the healing space screen, which includes acceptance, letting go, forgiveness, survival mode support, and guided meditations.',
+          'The user opened Gwyn from the healing space screen, which includes acceptance, letting go, forgiveness, survival mode support, and guided meditations.',
+      suggestedPrompts: const [
+        'Help me accept this feeling',
+        'I want to let something go',
+        'Help me calm survival mode',
+        'Guide me back to my body',
+      ],
+      showGwynHeader: false,
+      previewBeforeSubscription: true,
+      previewDialogMessage:
+          'Here you can chat with Gwyn about healing anxiety. This preview uses built-in example responses so you can see how Gwyn replies before subscribing.',
     );
   }
 
@@ -153,6 +190,81 @@ class _HealScreenState extends State<HealScreen> {
     );
   }
 
+  Future<void> _showHealingMethodsDialog(AppState appState) async {
+    var doNotShowAgain = false;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 56,
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
+              title: Text(
+                'How to heal anxiety?',
+                style: TextStyle(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: SizedBox(
+                height: 430,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Healing anxiety can happen through repeated practice. The tools and methods provided here help you accept what you feel, release what you are carrying, forgive what needs forgiveness, leave survival mode, and return to your inner strength through meditation.',
+                      style: TextStyle(height: 1.45),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Choose one method at a time. Small moments of safety and courage can teach your nervous system that the anxious wave can pass.',
+                      style: TextStyle(height: 1.45),
+                    ),
+                    const Spacer(),
+                    CheckboxListTile(
+                      value: doNotShowAgain,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          doNotShowAgain = value ?? false;
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: primaryColor,
+                      title: const Text(
+                        'Do not show this message again',
+                        style: TextStyle(fontSize: 14, height: 1.25),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () async {
+                    if (doNotShowAgain) {
+                      await appState.setHideHealMethodsMessage(true);
+                    }
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -192,21 +304,33 @@ class _HealScreenState extends State<HealScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _HealWithGwenButton(
-                        onTap: () => _openSubscription(context),
-                      ),
+                      _HealWithGwynButton(onTap: () => _openGwynChat(context)),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    'Anxiety can be healed. Be strong and carefull !',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? Colors.white60
-                          : Colors.black.withAlpha(153),
-                      height: 1.4,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Healing from anxiety is possible. Be strong and be courageous !',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? Colors.white60
+                                : Colors.black.withAlpha(153),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _HealHelpButton(
+                        onTap: () {
+                          final appState = context.read<AppState>();
+                          _showHealingMethodsDialog(appState);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -514,10 +638,10 @@ class _HealScreenState extends State<HealScreen> {
   }
 }
 
-class _HealWithGwenButton extends StatelessWidget {
+class _HealWithGwynButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _HealWithGwenButton({required this.onTap});
+  const _HealWithGwynButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -548,7 +672,7 @@ class _HealWithGwenButton extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Heal with Gwen',
+              'Heal with Gwyn',
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -560,6 +684,36 @@ class _HealWithGwenButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HealHelpButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HealHelpButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return Tooltip(
+      message: 'How to heal anxiety?',
+      child: IconButton(
+        onPressed: onTap,
+        icon: const Icon(Icons.help_outline_rounded),
+        color: primaryColor,
+        iconSize: 20,
+        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          backgroundColor: isDark
+              ? Colors.white.withAlpha(13)
+              : primaryColor.withAlpha(20),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
     );

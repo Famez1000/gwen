@@ -1,0 +1,141 @@
+WordPress blog post
+===================
+
+Title
+-----
+Introducing Gwyn: A Gentle Anxiety Support App for Everyday Moments
+
+Suggested slug
+--------------
+introducing-gwyn-anxiety-support-app
+
+Suggested excerpt
+-----------------
+Meet Gwyn, a warm anxiety-support app from ML Masters with breathing exercises, grounding tools, journaling, mood check-ins, reminders, progress insights, calming activities, and supportive AI-powered guidance.
+
+Suggested category
+------------------
+Apps
+
+Suggested tags
+--------------
+Gwyn, anxiety support, mental wellbeing, breathing exercises, journaling, grounding techniques, mood tracking
+
+Suggested featured image
+------------------------
+Use one of these images:
+- assets/images/icon3_512x512.png
+- assets/images/gwyn-draw.png
+- assets/images/gwyn-onboarding1.png
+
+
+Post body
+=========
+
+Introducing Gwyn: A Gentle Anxiety Support App for Everyday Moments
+
+Anxiety can make ordinary moments feel heavier than they should. Sometimes you need a quick breathing exercise. Sometimes you need to write down what is happening in your mind. Sometimes you need a small reminder that you do not have to solve everything at once.
+
+That is why we created Gwyn.
+
+Gwyn is an anxiety-support app designed to feel warm, simple, and human. It brings together practical tools that can help you slow down, reflect, ground yourself, and understand your emotional patterns over time.
+
+Gwyn does not tell you to "just calm down." Instead, it helps you take small, manageable steps when anxiety feels overwhelming.
+
+
+What Gwyn Helps You Do
+----------------------
+
+Gwyn includes a set of supportive tools you can use in different moments, depending on what you need.
+
+Breathing exercises
+Use calming breathing patterns to slow your breathing, relax your body, and create space between yourself and anxious thoughts.
+
+Grounding tools
+Reconnect with the present moment through sensory grounding exercises when your mind feels overloaded.
+
+Journaling and reflection
+Write about your day, record your anxiety level, and receive kind, helpful reflections that make it easier to understand what you are feeling.
+
+Mood and anxiety tracking
+Check in with yourself, notice patterns over time, and follow your progress through simple insights.
+
+Gentle reminders
+Set reminders to breathe, reflect, journal, or pause for a calming moment.
+
+Progress insights
+Review breathing sessions, calming streaks, anxiety logs, and reflections to discover what helps you most.
+
+Calming activities
+Explore affirmations, gentle distractions, soothing exercises, and supportive activities whenever your mind needs a reset.
+
+Chat with Gwyn
+Talk with Gwyn when anxiety feels overwhelming. Gwyn can offer warm encouragement, practical grounding suggestions, and simple next steps.
+
+
+Built for Small Steps
+---------------------
+
+One of the ideas behind Gwyn is that support should feel approachable.
+
+You do not need to write a perfect journal entry. You do not need to know exactly why you feel anxious. You do not need to have the right words ready.
+
+You can simply open the app and begin with one small action:
+
+- Take a breathing session.
+- Write one sentence about how you feel.
+- Check in with your mood.
+- Try a grounding exercise.
+- Ask Gwyn for gentle support.
+
+Small steps matter. Over time, those small steps can help you notice patterns, build calming habits, and feel more prepared when difficult moments arrive.
+
+
+Who Gwyn Is For
+---------------
+
+Gwyn is for people who want a gentle companion for anxious moments, quiet reflection, and everyday emotional support.
+
+It may be helpful when you:
+
+- Feel overwhelmed and need a simple grounding tool.
+- Want to track your anxiety and mood over time.
+- Need a calming breathing exercise.
+- Like journaling but want supportive reflection.
+- Want reminders to take better care of yourself.
+- Need a warm place to start when your thoughts feel too busy.
+
+Gwyn is designed to be practical, calming, and easy to use.
+
+
+Learn More
+----------
+
+You can learn more about Gwyn here:
+
+https://mlmasters.com/gwyn/
+
+We are excited to share Gwyn as the first app from ML Masters. Our goal is to create thoughtful tools that support calmer, healthier daily life, one small step at a time.
+
+
+Important Note
+--------------
+
+Gwyn is not a medical device, therapist, crisis service, or replacement for professional medical or mental health care. If you are in immediate danger, think you may harm yourself or someone else, or need urgent help, contact your local emergency services or a trusted person immediately.
+
+
+WordPress upload steps
+======================
+
+1. Go to WordPress Admin > Posts > Add New.
+2. Copy the title into the post title field.
+3. Copy the post body into the WordPress editor.
+4. Set the slug to:
+   introducing-gwyn-anxiety-support-app
+5. Add the suggested excerpt.
+6. Choose the category:
+   Apps
+7. Add the suggested tags.
+8. Upload one Gwyn image as the featured image.
+9. Preview the post on desktop and mobile.
+10. Publish when ready.

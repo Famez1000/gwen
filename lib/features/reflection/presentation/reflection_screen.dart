@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../gad7/presentation/gad7_screen.dart';
 
 class ReflectionScreen extends StatefulWidget {
   final AppState appState;
@@ -19,7 +18,7 @@ class _ReflectionScreenState extends State<ReflectionScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _journalController = TextEditingController();
   final Set<String> _selectedTriggers = {};
-  
+
   // Voice Recording Simulation States
   bool _isRecording = false;
   int _recordingSeconds = 0;
@@ -36,7 +35,7 @@ class _ReflectionScreenState extends State<ReflectionScreen>
     "uncertainty",
     "sleep",
     "caffeine",
-    "health"
+    "health",
   ];
 
   @override
@@ -99,7 +98,9 @@ class _ReflectionScreenState extends State<ReflectionScreen>
     final note = _journalController.text.trim();
     if (note.isEmpty && !_hasRecordedVoice) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please write a reflection or record a voice note.")),
+        const SnackBar(
+          content: Text("Please write a reflection or record a voice note."),
+        ),
       );
       return;
     }
@@ -108,10 +109,7 @@ class _ReflectionScreenState extends State<ReflectionScreen>
         ? "$note (Recorded voice note: $_recordingSeconds seconds)".trim()
         : note;
 
-    widget.appState.addReflection(
-      finalNote,
-      _selectedTriggers.toList(),
-    );
+    widget.appState.addReflection(finalNote, _selectedTriggers.toList());
 
     // Reset fields
     _journalController.clear();
@@ -148,7 +146,10 @@ class _ReflectionScreenState extends State<ReflectionScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Daily Reflection", style: TextStyle(fontWeight: FontWeight.w500)),
+        title: const Text(
+          "Daily Reflection",
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -162,14 +163,16 @@ class _ReflectionScreenState extends State<ReflectionScreen>
               // Inspirational text
               Text(
                 "Letting it out",
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(letterSpacing: 1.0),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(letterSpacing: 1.0),
               ),
               const SizedBox(height: 4),
               Text(
                 "Acknowledge your space.",
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -181,9 +184,9 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                     Text(
                       "What elements triggered your anxiety today?",
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -198,7 +201,9 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                               fontSize: 13,
                               color: isSelected
                                   ? Colors.white
-                                  : (isDark ? Colors.white70 : Colors.black.withOpacity(0.8)),
+                                  : (isDark
+                                        ? Colors.white70
+                                        : Colors.black.withOpacity(0.8)),
                             ),
                           ),
                           selected: isSelected,
@@ -207,7 +212,9 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                               ? Colors.white.withOpacity(0.04)
                               : Colors.black.withOpacity(0.03),
                           checkmarkColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           onSelected: (_) => _toggleTrigger(tag),
                         );
                       }).toList(),
@@ -225,25 +232,34 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                     Text(
                       "Write one sentence about what you need right now:",
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Container(
                       height: 80,
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.01),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.02)
+                            : Colors.black.withOpacity(0.01),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: TextField(
                         controller: _journalController,
                         maxLines: 3,
                         maxLength: 140,
-                        style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
                         decoration: const InputDecoration(
-                          hintText: "e.g., 'I need a few minutes of quiet and a warm glass of tea.'",
-                          hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                          hintText:
+                              "e.g., 'I need a few minutes of quiet and a warm glass of tea.'",
+                          hintStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                          ),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(12),
                           counterText: "",
@@ -272,11 +288,17 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                             children: [
                               Text(
                                 "Voice Note Option",
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                               Text(
                                 "Speak freely. It will be saved locally in your logs.",
-                                style: TextStyle(color: Colors.grey, fontSize: 11),
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 11,
+                                ),
                               ),
                             ],
                           ),
@@ -284,7 +306,7 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                       ],
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Voice wave animation
                     if (_isRecording) ...[
                       AnimatedBuilder(
@@ -306,21 +328,31 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                       const SizedBox(height: 10),
                       Text(
                         "Recording: $_recordingSeconds seconds (Tap again to stop)",
-                        style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.redAccent,
+                        ),
                       ),
                     ] else if (_hasRecordedVoice) ...[
-                      const Icon(Icons.check_circle, color: Colors.teal, size: 30),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.teal,
+                        size: 30,
+                      ),
                       const SizedBox(height: 6),
                       Text(
                         "Voice Note Recorded ($_recordingSeconds s)",
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
                     ] else ...[
                       const SizedBox(height: 10),
                     ],
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // Recording Action Button
                     GestureDetector(
                       onTap: _isRecording ? _stopRecording : _startRecording,
@@ -333,7 +365,9 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                               : primaryColor.withOpacity(0.12),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: _isRecording ? Colors.redAccent : primaryColor,
+                            color: _isRecording
+                                ? Colors.redAccent
+                                : primaryColor,
                             width: 1.5,
                           ),
                         ),
@@ -356,26 +390,13 @@ class _ReflectionScreenState extends State<ReflectionScreen>
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   elevation: 0,
                 ),
                 child: const Text(
                   "Save Reflection",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GAD7Screen(appState: widget.appState))),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  "GAD-7 analysis",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -409,7 +430,8 @@ class _SoundWavePainter extends CustomPainter {
     for (int i = 0; i < lineCount; i++) {
       final double x = spacing * (i + 1);
       // Math to make wave dynamic
-      final double waveHeight = height * 0.7 * (0.3 + 0.7 * sin(value * pi * 2 + i * 0.5).abs());
+      final double waveHeight =
+          height * 0.7 * (0.3 + 0.7 * sin(value * pi * 2 + i * 0.5).abs());
       final double yStart = (height - waveHeight) / 2;
       final double yEnd = yStart + waveHeight;
 

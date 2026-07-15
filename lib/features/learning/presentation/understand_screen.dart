@@ -1,25 +1,69 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../subscription/application/subscription_gate.dart';
 import 'ask_yourself_screen.dart';
 import 'body_signals_screen.dart';
 import 'faq_screen.dart';
+import 'measurements_screen.dart';
 import 'patterns_screen.dart';
 import 'thoughts_screen.dart';
 import 'triggers_screen.dart';
 
-class UnderstandScreen extends StatelessWidget {
+class UnderstandScreen extends StatefulWidget {
   final VoidCallback? onBack;
+  final bool isActive;
 
-  const UnderstandScreen({super.key, this.onBack});
+  const UnderstandScreen({super.key, this.onBack, this.isActive = true});
+
+  @override
+  State<UnderstandScreen> createState() => _UnderstandScreenState();
+}
+
+class _UnderstandScreenState extends State<UnderstandScreen> {
+  bool _isUnderstandPopupShowing = false;
+
+  @override
+  void didUpdateWidget(covariant UnderstandScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!oldWidget.isActive && widget.isActive) {
+      _showUnderstandPopupAfterTabSelection();
+    }
+  }
+
+  void _showUnderstandPopupAfterTabSelection() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isUnderstandPopupShowing) return;
+
+      final appState = context.read<AppState>();
+      if (appState.hideUnderstandMethodsMessage) return;
+
+      _isUnderstandPopupShowing = true;
+      _showUnderstandMethodsDialog(appState).whenComplete(() {
+        _isUnderstandPopupShowing = false;
+      });
+    });
+  }
 
   void _openSubscription(BuildContext context) {
-    openGwenChatOrSubscription(
+    openGwynChatOrSubscription(
       context,
-      title: 'Understand with Gwen',
+      title: 'Understand with Gwyn',
       pageContext:
-          'The user opened Gwen from the anxiety learning overview screen.',
+          'The user opened Gwyn from the anxiety learning overview screen.',
+      suggestedPrompts: const [
+        'Why does anxiety happen?',
+        'Help me understand my triggers',
+        'What are body signals?',
+        'How do I spot anxious thoughts?',
+      ],
+      showGwynHeader: false,
+      previewBeforeSubscription: true,
+      previewDialogMessage:
+          'Here you can chat with Gwyn about understanding anxiety. This preview uses built-in example responses so you can see how Gwyn replies before subscribing.',
     );
   }
 
@@ -44,6 +88,81 @@ class UnderstandScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _showUnderstandMethodsDialog(AppState appState) async {
+    var doNotShowAgain = false;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 56,
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
+              title: Text(
+                'How to understand anxiety?',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: SizedBox(
+                height: 390,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Understanding anxiety starts with noticing what happens before, during, and after it. Your body signals, thoughts, triggers, and patterns can show you what your nervous system is trying to protect you from.',
+                      style: TextStyle(height: 1.45),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Explore one area at a time. Small observations can make anxiety feel less mysterious and give you clearer choices for what to do next.',
+                      style: TextStyle(height: 1.45),
+                    ),
+                    const Spacer(),
+                    CheckboxListTile(
+                      value: doNotShowAgain,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          doNotShowAgain = value ?? false;
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: primaryColor,
+                      title: const Text(
+                        'Do not show this message again',
+                        style: TextStyle(fontSize: 14, height: 1.25),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () async {
+                    if (doNotShowAgain) {
+                      await appState.setHideUnderstandMethodsMessage(true);
+                    }
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -79,6 +198,13 @@ class UnderstandScreen extends StatelessWidget {
         icon: Icons.insights_rounded,
         color: Colors.indigo.shade400,
         onTap: () => _openScreen(context, const PatternsScreen()),
+      ),
+      _UnderstandTileData(
+        title: 'Measurements',
+        description: 'Use standard anxiety check-ins.',
+        icon: Icons.assignment_turned_in_rounded,
+        color: Colors.blueGrey.shade500,
+        onTap: () => _openScreen(context, const MeasurementsScreen()),
       ),
       _UnderstandTileData(
         title: 'Ask yourself',
@@ -118,12 +244,13 @@ class UnderstandScreen extends StatelessWidget {
                               ? Colors.white.withAlpha(13)
                               : Colors.black.withAlpha(8),
                         ),
-                        onPressed: onBack ?? () => Navigator.maybePop(context),
+                        onPressed:
+                            widget.onBack ?? () => Navigator.maybePop(context),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Why feel anxious?',
+                          'Understand anxiety',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.headlineMedium
@@ -131,26 +258,40 @@ class UnderstandScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _AskGwenButton(onTap: () => _openSubscription(context)),
+                      _AskGwynButton(onTap: () => _openSubscription(context)),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    'Try to understand the reason for your anxiety',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? Colors.white60
-                          : Colors.black.withAlpha(153),
-                      height: 1.4,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Try to understand the reason for your anxiety',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white60
+                                : Colors.black.withAlpha(153),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _UnderstandHelpButton(
+                        onTap: () {
+                          final appState = context.read<AppState>();
+                          _showUnderstandMethodsDialog(appState);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 itemCount: tiles.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -170,10 +311,10 @@ class UnderstandScreen extends StatelessWidget {
   }
 }
 
-class _AskGwenButton extends StatelessWidget {
+class _AskGwynButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _AskGwenButton({required this.onTap});
+  const _AskGwynButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +345,7 @@ class _AskGwenButton extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Understand with Gwen',
+              'Understand with Gwyn',
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -216,6 +357,36 @@ class _AskGwenButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnderstandHelpButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _UnderstandHelpButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return Tooltip(
+      message: 'How to understand anxiety?',
+      child: IconButton(
+        onPressed: onTap,
+        icon: const Icon(Icons.help_outline_rounded),
+        color: primaryColor,
+        iconSize: 20,
+        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          backgroundColor: isDark
+              ? Colors.white.withAlpha(13)
+              : primaryColor.withAlpha(20),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
     );

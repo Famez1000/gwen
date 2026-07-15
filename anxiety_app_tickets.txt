@@ -1,0 +1,55 @@
+Tickets for project: Anxiety app
+Project id: f240f07c-36d1-48a6-833a-3065ddb201f2
+
+Key      | Title                      | Issue / Description                                                        | Status
+---------|----------------------------|----------------------------------------------------------------------------|---------
+APP-1710 | Write in the app           | Write down your name and a save moment. When panic hits. Come back to this | resolved
+APP-8696 | Gwen app name change       | Gwen is Gwyn                                                               | todo
+APP-926  | Check th About             | Change about section                                                       | todo
+APP-8172 | Surviving mode             | Add meditations. Learn. Reflection. Remove leaf                            | todo
+APP-6313 | Gwyn space       done ?          | In the home screen. Give Gwyn space above                                  | todo
+APP-9101 | Panic screen               | Change exercises to draw. Joke and bubbles                                 | todo
+APP-9910 | Panic third step           | Distract your mind                                                         | todo
+APP-6055 | Question mark panic screen | Add question marks                                                         | todo
+APP-7295 | Check the questions        | In the Understand screen. Every aspect has questions.                      | todo
+APP-546  | Check progress             | Work on the progress screen                                                | todo
+APP-5741 | Reminders                  | Work on the Reminders screen                                               | todo
+APP-6094 | Balloon screen  done?          | Check this                                                                 | todo
+APP-9282 | Meditations                | Add many meditations. Add from server lateron                              | todo
+APP-5889 | Heal screen                | Start with. How do you heal Anxiety? Methods                               | todo
+
+Cope:
+In the cope section, there are exercises to cope with/survie the anxxiety when it disturbs you. The best approach is to distract your mind as much as possible. Exercises include:
+Draw and guess: interactive and fun
+Joke
+Leaf exc
+Play your favorite music
+Listen to the right meditation
+Do bubble pop
+Breathing exercises
+Remember who you are
+Vanquish with Gwyn AI to at least make it through the day.
+
+Understand:
+Read the FAQ about what anxiety is.
+Find out when, in what situation you feel anxious.
+Write down what you feel, where in your body (Body Signals).
+It it chronic? Or just when a particular situation arises (Triggers)? (like speaking in public)
+Ask yourself what the reason for the feeling is.
+Check your thoughts and Patterns.
+Understand with Gwyn AI to help you understand better
+
+
+Heal:
+Know what the problem is -> comes out of the understand screen.
+Suppose you're afraid of stepping into an airplane, heal it by using logic, convince your mind that what you think is not factual.
+Observe your thoughts throughout the day and catch yourself thinking negative thoughts.
+Read what people say on internet about healing anxiety.
+Accept what needs to be accepted, no matter what it is.
+Forgive what needs to be forgiven
+Let go what needs to be released.
+Ask in meditation yourself which step to take next.
+Catch yourself and try to avoid entering survival mode.
+Affirmations
+If anxiety stays then youre sufffering from chronic anxiety. Most lilekly rooted deeply inside yuor unconsciousness. Difficult to heal as you need to reprogram yourself, so be cautious.
+Heal with Gwyn AI to help you heal better

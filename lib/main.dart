@@ -75,7 +75,7 @@ class StillnessApp extends StatelessWidget {
         animation: appState,
         builder: (context, child) {
           return MaterialApp(
-            title: 'Gwen',
+            title: 'Gwyn',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.getThemeForIndex(appState.themeModeIndex),
             themeMode: appState.themeModeIndex == 2
@@ -178,12 +178,18 @@ class _AppShellState extends State<AppShell> {
     // Screens mapping
     final List<Widget> screens = [
       HomeScreen(onBottomDestinationSelected: _navigateToTab),
-      SanctuaryScreen(onBack: () => _navigateToTab(0)),
+      SanctuaryScreen(
+        onBack: () => _navigateToTab(0),
+        isActive: _currentIndex == 1,
+      ),
       JournalingScreen(
         appState: widget.appState,
         onBack: () => _navigateToTab(0),
       ),
-      UnderstandScreen(onBack: () => _navigateToTab(0)),
+      UnderstandScreen(
+        onBack: () => _navigateToTab(0),
+        isActive: _currentIndex == 3,
+      ),
       HealScreen(onBack: () => _navigateToTab(0), isActive: _currentIndex == 4),
     ];
 
@@ -337,12 +343,12 @@ class _AppShellState extends State<AppShell> {
                 label: 'Understand',
               ),
               NavigationDestination(
-                icon: Icon(
-                  Icons.hub_outlined,
+                icon: ImageIcon(
+                  const AssetImage('assets/images/resilient-health.png'),
                   color: isDark ? Colors.white54 : Colors.black54,
                 ),
-                selectedIcon: Icon(
-                  Icons.hub_rounded,
+                selectedIcon: ImageIcon(
+                  const AssetImage('assets/images/resilient-health.png'),
                   color: Theme.of(context).primaryColor,
                 ),
                 label: 'Heal',

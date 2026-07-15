@@ -1,6 +1,6 @@
 {
   "name": "gwen-functions",
-  "description": "Firebase Cloud Functions for Gwen",
+  "description": "Firebase Cloud Functions for Gwyn",
   "main": "index.js",
   "engines": {
     "node": "22"

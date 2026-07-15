@@ -22,7 +22,7 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   static final Uri _termsUrl = Uri.parse(
-    'https://mlmasters.com/TermsAndConditions_Gwen.html',
+    'https://mlmasters.com/TermsAndConditions_Gwyn.html',
   );
   static Set<String> get _productIds => _productIdByPlan.values.toSet();
   static Map<_SubscriptionPlan, String> get _productIdByPlan {
@@ -55,7 +55,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   };
   static const bool _showSubscriptionDebug = bool.fromEnvironment(
     'SHOW_SUBSCRIPTION_DEBUG',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
@@ -157,6 +157,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _storeMessage = null;
         }
       });
+      _logResolvedPlanProducts();
 
       await _restoreExistingSubscriptionIfNeeded(silent: true);
     } on PlatformException catch (error) {
@@ -246,7 +247,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             _isPurchasePending = false;
             _storeMessage = _openChatAfterNextPurchaseUpdate
                 ? null
-                : 'Gwen Plus is active.';
+                : 'Gwyn Plus is active.';
           });
           if (_openChatAfterNextPurchaseUpdate) {
             _openChatAfterNextPurchaseUpdate = false;
@@ -405,17 +406,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  Future<void> _skipForTesting() async {
-    final appState = context.read<AppState>();
-    await appState.activateDebugSubscription();
-    if (!mounted) return;
-
-    await Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => ChatScreen(appState: appState)),
-    );
-  }
-
   Future<void> _openChatAfterPurchase() async {
     final appState = context.read<AppState>();
     await Navigator.pushReplacement(
@@ -524,15 +514,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void _addDebugLine(String line) {
-    if (!_showSubscriptionDebug) return;
-
     final now = DateTime.now();
     final timestamp =
         '${now.hour.toString().padLeft(2, '0')}:'
         '${now.minute.toString().padLeft(2, '0')}:'
         '${now.second.toString().padLeft(2, '0')}';
     final entry = '$timestamp $line';
-    debugPrint('[SubscriptionScreen] $line');
+    if (kDebugMode) {
+      debugPrint('[SubscriptionScreen] $line');
+    }
+
+    if (!_showSubscriptionDebug) return;
 
     if (!mounted) {
       _debugLines = _trimDebugLines([..._debugLines, entry]);
@@ -547,6 +539,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   List<String> _trimDebugLines(List<String> lines) {
     if (lines.length <= 80) return lines;
     return lines.sublist(lines.length - 80);
+  }
+
+  void _logResolvedPlanProducts() {
+    for (final plan in _SubscriptionPlan.values) {
+      final productId = _productIdByPlan[plan]!;
+      final products = _productsById[productId] ?? const <ProductDetails>[];
+      final selectedProduct = _preferredProductForPlan(plan);
+      _addDebugLine(
+        'Resolved ${plan.name}: productId=$productId, '
+        'returnedCount=${products.length}, '
+        'displayPrice=${_priceForPlan(plan)}, '
+        'subtitle=${_subtitleForPlan(plan)}, '
+        'selected=${selectedProduct == null ? 'null' : _describeProduct(selectedProduct)}',
+      );
+    }
   }
 
   String _describeProduct(ProductDetails product) {
@@ -598,7 +605,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
-          'Gwen Plus',
+          'Gwyn Plus',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
@@ -669,7 +676,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     children: [
                       _BenefitLine(
                         icon: Icons.chat_bubble_rounded,
-                        text: 'Chat with Gwen from supportive app moments',
+                        text: 'Chat with Gwyn from supportive app moments',
                         color: primaryColor,
                       ),
                       const SizedBox(height: 12),
@@ -716,7 +723,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         title: 'Yearly',
                         price: _priceForPlan(_SubscriptionPlan.yearly),
                         subtitle: _subtitleForPlan(_SubscriptionPlan.yearly),
-                        badge: 'Best value',
+                        badge: '25% off offer',
                         isSelected: _selectedPlan == _SubscriptionPlan.yearly,
                         primaryColor: primaryColor,
                         surfaceText: surfaceText,
@@ -782,14 +789,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   color: mutedText,
                   onTap: _openTerms,
                 ),
-                if (kDebugMode) ...[
-                  const SizedBox(height: 10),
-                  _FooterLink(
-                    label: 'Skip',
-                    color: mutedText.withAlpha(120),
-                    onTap: _skipForTesting,
-                  ),
-                ],
                 if (_showSubscriptionDebug) ...[
                   const SizedBox(height: 16),
                   _SubscriptionDebugPanel(

@@ -15,11 +15,17 @@ class StorageService {
   static const String _keyEmergencyContact = 'emergency_contact';
   static const String _keyOnboardingCompleted = 'onboarding_completed';
   static const String _keyUserName = 'user_name';
+  static const String _keyProfileImageBase64 = 'profile_image_base64';
   static const String _keyMoodRealityText = 'mood_reality_text';
   static const String _keyMoodFavoriteSongUrl = 'mood_favorite_song_url';
+  static const String _keyHideMoodEntryPopup = 'hide_mood_entry_popup';
   static const String _keyAffirmations = 'affirmations';
-  static const String _keyRecentGwenJokes = 'recent_gwen_jokes';
+  static const String _keyRecentGwynJokes = 'recent_gwen_jokes';
   static const String _keyHealDisclaimerAccepted = 'heal_disclaimer_accepted';
+  static const String _keyHideHealMethodsMessage = 'hide_heal_methods_message';
+  static const String _keyHideUnderstandMethodsMessage =
+      'hide_understand_methods_message';
+  static const String _keyHideCopeMethodsMessage = 'hide_cope_methods_message';
   static const String _keyGroundingObjects = 'grounding_objects';
   static const String _keyGroundingTouchObjects = 'grounding_touch_objects';
   static const String _keyGroundingSoundObjects = 'grounding_sound_objects';
@@ -27,6 +33,8 @@ class StorageService {
   static const String _keyGroundingTasteObjects = 'grounding_taste_objects';
   static const String _keyDebugSubscriptionActive = 'debug_subscription_active';
   static const String _keyStoreSubscriptionActive = 'store_subscription_active';
+  static const String _keyDrawingGuessFreeRequestUsed =
+      'drawing_guess_free_request_used';
 
   late final SharedPreferences _prefs;
 
@@ -177,6 +185,14 @@ class StorageService {
     await _prefs.setString(_keyUserName, name);
   }
 
+  String getProfileImageBase64() {
+    return _prefs.getString(_keyProfileImageBase64) ?? '';
+  }
+
+  Future<void> setProfileImageBase64(String imageBase64) async {
+    await _prefs.setString(_keyProfileImageBase64, imageBase64);
+  }
+
   String getMoodRealityText() {
     return _prefs.getString(_keyMoodRealityText) ?? '';
   }
@@ -191,6 +207,14 @@ class StorageService {
 
   Future<void> setMoodFavoriteSongUrl(String url) async {
     await _prefs.setString(_keyMoodFavoriteSongUrl, url);
+  }
+
+  bool getHideMoodEntryPopup() {
+    return _prefs.getBool(_keyHideMoodEntryPopup) ?? false;
+  }
+
+  Future<void> setHideMoodEntryPopup(bool hidden) async {
+    await _prefs.setBool(_keyHideMoodEntryPopup, hidden);
   }
 
   List<List<String>> getAffirmations() {
@@ -213,12 +237,12 @@ class StorageService {
     await _prefs.setString(_keyAffirmations, jsonEncode(affirmations));
   }
 
-  List<String> getRecentGwenJokes() {
-    return _prefs.getStringList(_keyRecentGwenJokes) ?? [];
+  List<String> getRecentGwynJokes() {
+    return _prefs.getStringList(_keyRecentGwynJokes) ?? [];
   }
 
-  Future<void> setRecentGwenJokes(List<String> jokes) async {
-    await _prefs.setStringList(_keyRecentGwenJokes, jokes);
+  Future<void> setRecentGwynJokes(List<String> jokes) async {
+    await _prefs.setStringList(_keyRecentGwynJokes, jokes);
   }
 
   bool getHealDisclaimerAccepted() {
@@ -227,6 +251,38 @@ class StorageService {
 
   Future<void> setHealDisclaimerAccepted(bool accepted) async {
     await _prefs.setBool(_keyHealDisclaimerAccepted, accepted);
+  }
+
+  bool getHideHealMethodsMessage() {
+    return _prefs.getBool(_keyHideHealMethodsMessage) ?? false;
+  }
+
+  Future<void> setHideHealMethodsMessage(bool hidden) async {
+    await _prefs.setBool(_keyHideHealMethodsMessage, hidden);
+  }
+
+  bool getHideUnderstandMethodsMessage() {
+    return _prefs.getBool(_keyHideUnderstandMethodsMessage) ?? false;
+  }
+
+  Future<void> setHideUnderstandMethodsMessage(bool hidden) async {
+    await _prefs.setBool(_keyHideUnderstandMethodsMessage, hidden);
+  }
+
+  bool getHideCopeMethodsMessage() {
+    return _prefs.getBool(_keyHideCopeMethodsMessage) ?? false;
+  }
+
+  Future<void> setHideCopeMethodsMessage(bool hidden) async {
+    await _prefs.setBool(_keyHideCopeMethodsMessage, hidden);
+  }
+
+  bool getDrawingGuessFreeRequestUsed() {
+    return _prefs.getBool(_keyDrawingGuessFreeRequestUsed) ?? false;
+  }
+
+  Future<void> setDrawingGuessFreeRequestUsed(bool used) async {
+    await _prefs.setBool(_keyDrawingGuessFreeRequestUsed, used);
   }
 
   List<String> getGroundingObjects() {

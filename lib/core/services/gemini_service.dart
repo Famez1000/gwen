@@ -11,8 +11,8 @@ class GeminiService {
   static const String _gwenAiFunctionUrl = String.fromEnvironment(
     'GWEN_AI_FUNCTION_URL',
   );
-  static const String _legacyGwenAiUrl = String.fromEnvironment('GWENAI_URL');
-  static const String _defaultGwenAiUrl =
+  static const String _legacygwenAiUrl = String.fromEnvironment('GWENAI_URL');
+  static const String _defaultgwenAiUrl =
       'https://gwenai-bf2iljcfjq-uc.a.run.app';
   static const bool _debugGemini = bool.fromEnvironment(
     'DEBUG_GEMINI',
@@ -22,7 +22,7 @@ class GeminiService {
   Future<void> initializeApiKey() async {}
 
   Future<String> generateGwenResponse(String userMessage) async {
-    return _callGwenFunction('generateGwenResponse', {
+    return _callGwynFunction('generateGwenResponse', {
       'userMessage': userMessage,
     });
   }
@@ -32,7 +32,7 @@ class GeminiService {
     required String pageTitle,
     required String pageContext,
   }) async {
-    return _callGwenFunction('generateContextualGwenResponse', {
+    return _callGwynFunction('generateContextualGwenResponse', {
       'userMessage': userMessage,
       'pageTitle': pageTitle,
       'pageContext': pageContext,
@@ -40,7 +40,7 @@ class GeminiService {
   }
 
   Future<String> summarizeJournalEntries(String journalEntries) async {
-    return _callGwenFunction('summarizeJournalEntries', {
+    return _callGwynFunction('summarizeJournalEntries', {
       'journalEntries': journalEntries,
     });
   }
@@ -50,7 +50,7 @@ class GeminiService {
     required String summary,
     required String question,
   }) async {
-    return _callGwenFunction('respondToJournalSummaryQuestion', {
+    return _callGwynFunction('respondToJournalSummaryQuestion', {
       'journalEntries': journalEntries,
       'summary': summary,
       'question': question,
@@ -58,7 +58,7 @@ class GeminiService {
   }
 
   Future<String> guessDrawing(Uint8List pngBytes) async {
-    return _callGwenFunction('guessDrawing', {
+    return _callGwynFunction('guessDrawing', {
       'pngBase64': base64Encode(pngBytes),
     });
   }
@@ -67,7 +67,7 @@ class GeminiService {
     required String guess,
     required String userReply,
   }) async {
-    return _callGwenFunction('respondToDrawingGuess', {
+    return _callGwynFunction('respondToDrawingGuess', {
       'guess': guess,
       'userReply': userReply,
     });
@@ -76,18 +76,18 @@ class GeminiService {
   Future<String> generateRelaxingJoke({
     List<String> recentJokes = const [],
   }) async {
-    return _callGwenFunction('generateRelaxingJoke', {
+    return _callGwynFunction('generateRelaxingJoke', {
       'recentJokes': recentJokes,
     });
   }
 
-  Future<String> _callGwenFunction(
+  Future<String> _callGwynFunction(
     String operation,
     Map<String, dynamic> payload,
   ) async {
     final functionUrl = _functionUrl;
     if (functionUrl.isEmpty) {
-      throw const GeminiServiceException('Gwen AI function URL is missing.');
+      throw const GeminiServiceException('Gwyn AI function URL is missing.');
     }
 
     final uri = Uri.parse(functionUrl);
@@ -119,7 +119,7 @@ class GeminiService {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw GeminiServiceException(
-          'Gwen AI request failed with status ${response.statusCode}: '
+          'Gwyn AI request failed with status ${response.statusCode}: '
           '${_preview(responseText, 300)}',
         );
       }
@@ -134,16 +134,16 @@ class GeminiService {
     if (_gwenAiFunctionUrl.trim().isNotEmpty) {
       return _normalizeFunctionUrl(_gwenAiFunctionUrl);
     }
-    if (_legacyGwenAiUrl.trim().isNotEmpty) {
-      return _normalizeFunctionUrl(_legacyGwenAiUrl);
+    if (_legacygwenAiUrl.trim().isNotEmpty) {
+      return _normalizeFunctionUrl(_legacygwenAiUrl);
     }
-    return _defaultGwenAiUrl;
+    return _defaultgwenAiUrl;
   }
 
   String _normalizeFunctionUrl(String value) {
     final trimmed = value.trim();
-    if (trimmed == '${_defaultGwenAiUrl}c') {
-      return _defaultGwenAiUrl;
+    if (trimmed == '${_defaultgwenAiUrl}c') {
+      return _defaultgwenAiUrl;
     }
     return trimmed;
   }

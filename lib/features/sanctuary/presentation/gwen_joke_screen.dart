@@ -5,14 +5,14 @@ import '../../../core/services/gemini_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 
-class GwenJokeScreen extends StatefulWidget {
-  const GwenJokeScreen({super.key});
+class GwynJokeScreen extends StatefulWidget {
+  const GwynJokeScreen({super.key});
 
   @override
-  State<GwenJokeScreen> createState() => _GwenJokeScreenState();
+  State<GwynJokeScreen> createState() => _GwynJokeScreenState();
 }
 
-class _GwenJokeScreenState extends State<GwenJokeScreen> {
+class _GwynJokeScreenState extends State<GwynJokeScreen> {
   String? _joke;
   bool _isLoading = false;
 
@@ -27,14 +27,14 @@ class _GwenJokeScreenState extends State<GwenJokeScreen> {
     try {
       final appState = Provider.of<AppState>(context, listen: false);
       final joke = await GeminiService.instance.generateRelaxingJoke(
-        recentJokes: appState.recentGwenJokes,
+        recentJokes: appState.recentGwynJokes,
       );
       if (!mounted) return;
-      await appState.rememberGwenJoke(joke);
+      await appState.rememberGwynJoke(joke);
       if (!mounted) return;
       setState(() => _joke = joke);
     } catch (error) {
-      debugPrint('[GwenJokeScreen] Joke generation failed: $error');
+      debugPrint('[GwynJokeScreen] Joke generation failed: $error');
       if (!mounted) return;
       setState(
         () => _joke =
@@ -55,7 +55,7 @@ class _GwenJokeScreenState extends State<GwenJokeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Gwen\'s Joke Corner',
+          'Gwyn\'s Joke Corner',
           style: TextStyle(fontWeight: FontWeight.w500),
         ),
         centerTitle: true,
@@ -70,7 +70,9 @@ class _GwenJokeScreenState extends State<GwenJokeScreen> {
               child: CircleAvatar(
                 radius: 74,
                 backgroundColor: primaryColor.withAlpha(31),
-                backgroundImage: const AssetImage('assets/images/gwen_funny.png'),
+                backgroundImage: const AssetImage(
+                  'assets/images/gwen_funny.png',
+                ),
               ),
             ),
             const SizedBox(height: 24),

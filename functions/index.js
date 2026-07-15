@@ -35,9 +35,9 @@ exports.gwenAi = onRequest(
       const text = await callGemini(geminiBody);
       res.status(200).json({text});
     } catch (error) {
-      logger.error("Gwen AI request failed", error);
+      logger.error("Gwyn AI request failed", error);
       res.status(error.statusCode || 500).json({
-        error: error.publicMessage || "Gwen could not respond right now.",
+        error: error.publicMessage || "Gwyn could not respond right now.",
       });
     }
   },
@@ -175,7 +175,7 @@ function buildGeminiBody(operation, payload) {
   switch (operation) {
     case "generateGwenResponse":
       return textRequest(
-        baseGwenInstruction(),
+        baseGwynInstruction(),
         requireString(payload.userMessage, "userMessage"),
         1024,
         0.8,
@@ -185,7 +185,7 @@ function buildGeminiBody(operation, payload) {
       const pageTitle = requireString(payload.pageTitle, "pageTitle");
       const pageContext = requireString(payload.pageContext, "pageContext");
       return textRequest(
-        `${baseGwenInstruction()} The user opened Gwen from the "${pageTitle}" page, so tailor the answer to that page context. Page context: ${pageContext}`,
+        `${baseGwynInstruction()} The user opened Gwyn from the "${pageTitle}" page, so tailor the answer to that page context. Page context: ${pageContext}`,
         requireString(payload.userMessage, "userMessage"),
         1024,
         0.8,
@@ -194,8 +194,8 @@ function buildGeminiBody(operation, payload) {
 
     case "summarizeJournalEntries":
       return textRequest(
-        "You are Gwen, a warm anxiety-support companion in a Flutter app. Summarize the user journal entries with care and emotional sensitivity. Do not diagnose, do not overstate patterns, and do not replace professional care. Focus on recurring feelings, possible triggers, coping strengths, and one gentle next step. Use the user-provided journal text only. Keep the response concise: 4 short bullet points maximum.",
-        `Please summarize these journal entries as Gwen:\n\n${requireString(payload.journalEntries, "journalEntries")}`,
+        "You are Gwyn, a warm anxiety-support companion in a Flutter app. Summarize the user journal entries with care and emotional sensitivity. Do not diagnose, do not overstate patterns, and do not replace professional care. Focus on recurring feelings, possible triggers, coping strengths, and one gentle next step. Use the user-provided journal text only. Keep the response concise: 4 short bullet points maximum.",
+        `Please summarize these journal entries as Gwyn:\n\n${requireString(payload.journalEntries, "journalEntries")}`,
         1024,
         0.5,
       );
@@ -205,8 +205,8 @@ function buildGeminiBody(operation, payload) {
       const summary = requireString(payload.summary, "summary");
       const question = requireString(payload.question, "question");
       return textRequest(
-        "You are Gwen, a warm anxiety-support companion in a Flutter app. Answer follow-up questions about the user journal summary with care and emotional sensitivity. Use only the supplied journal entries and summary as context. Do not diagnose, do not overstate patterns, and do not replace professional care. If the user sounds in immediate danger, encourage them to contact local emergency help or a trusted person now. Keep replies concise: 2 short paragraphs maximum.",
-        `Journal entries:\n${journalEntries}\n\nGwen summary:\n${summary}\n\nUser question:\n${question}`,
+        "You are Gwyn, a warm anxiety-support companion in a Flutter app. Answer follow-up questions about the user journal summary with care and emotional sensitivity. Use only the supplied journal entries and summary as context. Do not diagnose, do not overstate patterns, and do not replace professional care. If the user sounds in immediate danger, encourage them to contact local emergency help or a trusted person now. Keep replies concise: 2 short paragraphs maximum.",
+        `Journal entries:\n${journalEntries}\n\nGwyn summary:\n${summary}\n\nUser question:\n${question}`,
         1024,
         0.7,
       );
@@ -219,8 +219,8 @@ function buildGeminiBody(operation, payload) {
       const guess = requireString(payload.guess, "guess");
       const userReply = requireString(payload.userReply, "userReply");
       return textRequest(
-        "You are Gwen, a playful anxiety-support companion in a drawing guessing game. React to the user in a warm, funny way. If they correct your guess, happily accept the correction. If they say you were right, celebrate briefly. Keep the reply to 1 or 2 short sentences.",
-        `Gwen guessed: "${guess}"\nThe user replied: "${userReply}"\nRespond as Gwen.`,
+        "You are Gwyn, a playful anxiety-support companion in a drawing guessing game. React to the user in a warm, funny way. If they correct your guess, happily accept the correction. If they say you were right, celebrate briefly. Keep the reply to 1 or 2 short sentences.",
+        `Gwyn guessed: "${guess}"\nThe user replied: "${userReply}"\nRespond as Gwyn.`,
         1024,
         0.8,
       );
@@ -248,7 +248,7 @@ function buildGeminiBody(operation, payload) {
         recentJokes.map((joke) => `- ${joke}`).join("\n");
 
       return textRequest(
-        "You are Gwen, a warm anxiety-support companion in a Flutter app. Tell exactly one gentle, relaxing joke that is light, kind, and suitable for someone feeling anxious. Avoid dark humor, insults, medical jokes, emergency themes, and anything mean. Do not repeat or closely paraphrase any recent jokes provided by the user. Keep it short: 1 or 2 sentences maximum.",
+        "You are Gwyn, a warm anxiety-support companion in a Flutter app. Tell exactly one gentle, relaxing joke that is light, kind, and suitable for someone feeling anxious. Avoid dark humor, insults, medical jokes, emergency themes, and anything mean. Do not repeat or closely paraphrase any recent jokes provided by the user. Keep it short: 1 or 2 sentences maximum.",
         `Please tell me one calming joke to help someone soften a tense moment. Use this loose theme to keep it fresh: ${topic}.\n\nRecent jokes to avoid:\n${recentJokesText}`,
         512,
         0.9,
@@ -259,14 +259,14 @@ function buildGeminiBody(operation, payload) {
     default: {
       const error = new Error(`Unsupported operation: ${operation}`);
       error.statusCode = 400;
-      error.publicMessage = "Unsupported Gwen request.";
+      error.publicMessage = "Unsupported Gwyn request.";
       throw error;
     }
   }
 }
 
-function baseGwenInstruction() {
-  return "You are Gwen, a warm anxiety-support companion in a Flutter app. Answer with kindness, practical grounding suggestions, and light encouragement. Do not claim to diagnose or replace professional care. If the user sounds in immediate danger, encourage them to contact local emergency help or a trusted person now. Keep replies concise: 2 short paragraphs maximum.";
+function baseGwynInstruction() {
+  return "You are Gwyn, a warm anxiety-support companion in a Flutter app. Answer with kindness, practical grounding suggestions, and light encouragement. Do not claim to diagnose or replace professional care. If the user sounds in immediate danger, encourage them to contact local emergency help or a trusted person now. Keep replies concise: 2 short paragraphs maximum.";
 }
 
 function textRequest(systemInstruction, text, maxOutputTokens, temperature, extraConfig = {}) {
@@ -292,7 +292,7 @@ function drawingRequest(pngBase64) {
     system_instruction: {
       parts: [
         {
-          text: "You are Gwen, a playful anxiety-support companion. The user drew a picture for a light stress-relief game. Guess what the drawing is with warmth and humor. If it is unclear, make one cheerful best guess. Reply with exactly one complete sentence under 20 words. End the sentence with punctuation.",
+          text: "You are Gwyn, a playful anxiety-support companion. The user drew a picture for a light stress-relief game. Guess what the drawing is with warmth and humor. If it is unclear, make one cheerful best guess. Reply with exactly one complete sentence under 20 words. End the sentence with punctuation.",
         },
       ],
     },
@@ -300,7 +300,7 @@ function drawingRequest(pngBase64) {
       {
         parts: [
           {
-            text: "What do you think this drawing is? Reply as Gwen with one complete playful sentence.",
+            text: "What do you think this drawing is? Reply as Gwyn with one complete playful sentence.",
           },
           {
             inline_data: {
@@ -320,7 +320,7 @@ async function callGemini(body) {
   if (!apiKey) {
     const error = new Error("Missing GEMINI_API_KEY secret.");
     error.statusCode = 500;
-    error.publicMessage = "Gwen is not configured yet.";
+    error.publicMessage = "Gwyn is not configured yet.";
     throw error;
   }
 
@@ -340,7 +340,7 @@ async function callGemini(body) {
   if (!response.ok) {
     const error = new Error(`Gemini request failed: ${response.status} ${responseText}`);
     error.statusCode = 502;
-    error.publicMessage = "Gwen could not respond right now.";
+    error.publicMessage = "Gwyn could not respond right now.";
     throw error;
   }
 
@@ -359,7 +359,7 @@ function extractText(responseText) {
   if (!text) {
     const error = new Error("Gemini returned an empty response.");
     error.statusCode = 502;
-    error.publicMessage = "Gwen returned an empty response.";
+    error.publicMessage = "Gwyn returned an empty response.";
     throw error;
   }
 
@@ -370,7 +370,7 @@ function requireString(value, fieldName) {
   if (typeof value !== "string" || value.trim().length === 0) {
     const error = new Error(`Missing required field: ${fieldName}`);
     error.statusCode = 400;
-    error.publicMessage = "Missing Gwen request data.";
+    error.publicMessage = "Missing Gwyn request data.";
     throw error;
   }
   return value.trim();

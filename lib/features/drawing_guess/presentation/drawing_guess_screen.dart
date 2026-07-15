@@ -2,13 +2,17 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/state/app_state.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../subscription/application/subscription_gate.dart';
+import '../../subscription/presentation/subscription_screen.dart';
 
 class DrawingGuessScreen extends StatefulWidget {
   const DrawingGuessScreen({super.key});
@@ -18,12 +22,12 @@ class DrawingGuessScreen extends StatefulWidget {
 }
 
 class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
-  static const Color _gwenArmorColor = Color(0xFF59616B);
+  static const Color _gwynArmorColor = Color(0xFF59616B);
 
   final GlobalKey _drawingKey = GlobalKey();
   final List<_DrawingStroke> _strokes = [];
   final TextEditingController _replyController = TextEditingController();
-  final ScrollController _gwenUiScrollController = ScrollController();
+  final ScrollController _gwynUiScrollController = ScrollController();
   final List<_GuessChatMessage> _guessChatMessages = [];
   late final AudioPlayer _musicPlayer;
 
@@ -33,6 +37,7 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
   bool _isGuessing = false;
   bool _isReplying = false;
   bool _musicEnabled = false;
+  bool _freeGuessUsedThisSession = false;
 
   bool get _hasDrawing => _strokes.any((stroke) => stroke.points.isNotEmpty);
 
@@ -85,13 +90,23 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
     });
   }
 
-  Future<void> _askGwen() async {
+  Future<void> _askGwyn() async {
+    _logGateState('Guess tapped');
     if (!_hasDrawing || _isGuessing) {
       if (!_hasDrawing) {
+        _logGateState('Guess blocked: no drawing');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Draw something first.')));
       }
+      if (_isGuessing) {
+        _logGateState('Guess blocked: already guessing');
+      }
+      return;
+    }
+
+    if (!await _canUseDrawingGuess() || !mounted) {
+      _logGateState('Guess stopped by subscription gate');
       return;
     }
 
@@ -106,6 +121,11 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
       final imageBytes = await _captureDrawing();
       final answer = await GeminiService.instance.guessDrawing(imageBytes);
       if (!mounted) return;
+      _logGateState('Guess succeeded: marking session free guess used');
+      _freeGuessUsedThisSession = true;
+      await context.read<AppState>().useDrawingGuessFreeRequest();
+      if (!mounted) return;
+      _logGateState('Session free guess marked used');
       setState(() {
         _guess = answer;
         _guessChatMessages.clear();
@@ -114,9 +134,9 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
       if (!mounted) return;
       setState(
         () => _guess =
-            "Gwen squints dramatically, but couldn't read this sketch yet. Try again with a bolder drawing.",
+            "Gwyn squints dramatically, but couldn't read this sketch yet. Try again with a bolder drawing.",
       );
-      debugPrint('[DrawingGuessScreen] Gwen guess failed: $error');
+      debugPrint('[DrawingGuessScreen] Gwyn guess failed: $error');
     } finally {
       if (mounted) {
         setState(() => _isGuessing = false);
@@ -125,11 +145,11 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
   }
 
   void _openSubscription() {
-    openGwenChatOrSubscription(
+    openGwynChatOrSubscription(
       context,
-      title: 'Draw with Gwen',
+      title: 'Draw with Gwyn',
       pageContext:
-          'The user opened Gwen from the drawing guess game after sketching or preparing to sketch something.',
+          'The user opened Gwyn from the drawing guess game after sketching or preparing to sketch something.',
     );
   }
 
@@ -137,6 +157,12 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
     final guess = _guess;
     final reply = _replyController.text.trim();
     if (guess == null || reply.isEmpty || _isReplying) return;
+
+    _logGateState('Reply tapped');
+    if (!await _canUseDrawingReply() || !mounted) {
+      _logGateState('Reply stopped by subscription gate');
+      return;
+    }
 
     FocusScope.of(context).unfocus();
     HapticFeedback.lightImpact();
@@ -161,17 +187,86 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
         _guessChatMessages.add(
           const _GuessChatMessage(
             text:
-                "Gwen dropped her magnifying glass for a second. Try sending that again.",
+                "Gwyn dropped her magnifying glass for a second. Try sending that again.",
             isUser: false,
           ),
         );
       });
-      debugPrint('[DrawingGuessScreen] Gwen reply failed: $error');
+      debugPrint('[DrawingGuessScreen] Gwyn reply failed: $error');
     } finally {
       if (mounted) {
         setState(() => _isReplying = false);
       }
     }
+  }
+
+  Future<bool> _canUseDrawingGuess() async {
+    final appState = context.read<AppState>();
+    _logGateState('Checking guess permission');
+
+    if (appState.hasStoreSubscription) {
+      _logGateState('Guess allowed: store subscription');
+      return true;
+    }
+
+    if (!_freeGuessUsedThisSession) {
+      _logGateState('Guess allowed: session free guess not used yet');
+      return true;
+    }
+
+    _logGateState('Guess blocked: session free guess already used');
+    _showSubscriptionScreen();
+    return false;
+  }
+
+  Future<bool> _canUseDrawingReply() async {
+    _logGateState('Checking reply permission');
+
+    if (context.read<AppState>().hasStoreSubscription) {
+      _logGateState('Reply allowed: store subscription');
+      return true;
+    }
+
+    _logGateState('Reply blocked: subscription required');
+    _showSubscriptionScreen();
+    return false;
+  }
+
+  void _showSubscriptionScreen() {
+    _logGateState('Opening subscription screen');
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+    );
+  }
+
+  Future<void> _resetFreeGuessForDebug() async {
+    await context.read<AppState>().resetDrawingGuessFreeRequestForDebug();
+    _freeGuessUsedThisSession = false;
+    if (!mounted) return;
+    _logGateState('Debug reset free guess');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Debug: free Draw & Guess try reset.')),
+    );
+  }
+
+  void _logGateState(String event) {
+    final appState = context.read<AppState>();
+    debugPrint(
+      '[DrawingGuessGate] $event | '
+      'mounted=$mounted, '
+      'hasDrawing=$_hasDrawing, '
+      'isGuessing=$_isGuessing, '
+      'isReplying=$_isReplying, '
+      'hasActiveSubscription=${appState.hasActiveSubscription}, '
+      'hasStoreSubscription=${appState.hasStoreSubscription}, '
+      'hasDebugSubscription=${appState.hasDebugSubscription}, '
+      'drawingGuessFreeRequestUsed=${appState.drawingGuessFreeRequestUsed}, '
+      'freeGuessUsedThisSession=$_freeGuessUsedThisSession, '
+      'strokes=${_strokes.length}, '
+      'guessPresent=${_guess != null}',
+    );
   }
 
   Future<Uint8List> _captureDrawing() async {
@@ -223,7 +318,7 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
   @override
   void dispose() {
     _replyController.dispose();
-    _gwenUiScrollController.dispose();
+    _gwynUiScrollController.dispose();
     _musicPlayer.dispose();
     super.dispose();
   }
@@ -242,6 +337,12 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          if (kDebugMode)
+            IconButton(
+              tooltip: 'Debug: reset free guess',
+              onPressed: _resetFreeGuessForDebug,
+              icon: const Icon(Icons.restart_alt_rounded),
+            ),
           IconButton(
             tooltip: _musicEnabled ? 'Pause music' : 'Play music',
             onPressed: _toggleMusic,
@@ -266,7 +367,7 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final maxGwenPanelHeight = constraints.maxHeight * 0.40;
+            final maxGwynPanelHeight = constraints.maxHeight * 0.40;
             final bottomSafePadding = MediaQuery.viewPaddingOf(context).bottom;
 
             return Column(
@@ -309,7 +410,7 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
                                 opacity: _hasDrawing ? 0 : 1,
                                 duration: const Duration(milliseconds: 250),
                                 child: Text(
-                                  'Draw anything and let Gwen guess',
+                                  'Draw anything and let Gwyn guess',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: isDark
@@ -327,27 +428,32 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
                   ),
                 ),
                 ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: maxGwenPanelHeight),
+                  constraints: BoxConstraints(maxHeight: maxGwynPanelHeight),
                   child: Scrollbar(
-                    controller: _gwenUiScrollController,
+                    controller: _gwynUiScrollController,
                     thumbVisibility:
                         _guess != null || _guessChatMessages.isNotEmpty,
                     child: SingleChildScrollView(
-                      controller: _gwenUiScrollController,
+                      controller: _gwynUiScrollController,
                       padding: EdgeInsets.fromLTRB(
                         20,
                         14,
                         20,
                         18 + bottomSafePadding,
                       ),
-                      child: _GwenGuessPanel(
+                      child: _GwynGuessPanel(
                         isGuessing: _isGuessing,
                         guess: _guess,
                         replyController: _replyController,
                         messages: _guessChatMessages,
                         isReplying: _isReplying,
-                        onAskGwen: _askGwen,
-                        onGwenImageTap: _openSubscription,
+                        askButtonLabel:
+                            context.watch<AppState>().hasStoreSubscription ||
+                                _freeGuessUsedThisSession
+                            ? "Gwyn's guess"
+                            : "Gwyn's guess (1 free)",
+                        onAskGwyn: _askGwyn,
+                        onGwynImageTap: _openSubscription,
                         onSendReply: _sendGuessReply,
                       ),
                     ),
@@ -362,24 +468,26 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
   }
 }
 
-class _GwenGuessPanel extends StatelessWidget {
+class _GwynGuessPanel extends StatelessWidget {
   final bool isGuessing;
   final String? guess;
   final TextEditingController replyController;
   final List<_GuessChatMessage> messages;
   final bool isReplying;
-  final VoidCallback onAskGwen;
-  final VoidCallback onGwenImageTap;
+  final String askButtonLabel;
+  final VoidCallback onAskGwyn;
+  final VoidCallback onGwynImageTap;
   final VoidCallback onSendReply;
 
-  const _GwenGuessPanel({
+  const _GwynGuessPanel({
     required this.isGuessing,
     required this.guess,
     required this.replyController,
     required this.messages,
     required this.isReplying,
-    required this.onAskGwen,
-    required this.onGwenImageTap,
+    required this.askButtonLabel,
+    required this.onAskGwyn,
+    required this.onGwynImageTap,
     required this.onSendReply,
   });
 
@@ -393,15 +501,15 @@ class _GwenGuessPanel extends StatelessWidget {
         Row(
           children: [
             GestureDetector(
-              onTap: onGwenImageTap,
+              onTap: onGwynImageTap,
               child: Container(
                 height: 52,
                 width: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _DrawingGuessScreenState._gwenArmorColor.withAlpha(25),
+                  color: _DrawingGuessScreenState._gwynArmorColor.withAlpha(25),
                   border: Border.all(
-                    color: _DrawingGuessScreenState._gwenArmorColor.withAlpha(
+                    color: _DrawingGuessScreenState._gwynArmorColor.withAlpha(
                       64,
                     ),
                     width: 1.5,
@@ -423,7 +531,7 @@ class _GwenGuessPanel extends StatelessWidget {
                   disabledBackgroundColor: primaryColor.withAlpha(130),
                   disabledForegroundColor: Colors.white70,
                 ),
-                onPressed: isGuessing ? null : onAskGwen,
+                onPressed: isGuessing ? null : onAskGwyn,
                 icon: isGuessing
                     ? const SizedBox(
                         height: 18,
@@ -432,7 +540,7 @@ class _GwenGuessPanel extends StatelessWidget {
                       )
                     : const Icon(Icons.auto_awesome_rounded),
                 label: Text(
-                  isGuessing ? 'Gwen is guessing...' : "Gwen's guess",
+                  isGuessing ? 'Gwyn is guessing...' : askButtonLabel,
                 ),
               ),
             ),
@@ -532,7 +640,7 @@ class _GuessReplyBox extends StatelessWidget {
                   onSubmitted: (_) => onSend(),
                   decoration: InputDecoration(
                     hintText: messages.isEmpty
-                        ? 'Tell Gwen if she was close...'
+                        ? 'Tell Gwyn if she was close...'
                         : 'Any response?',
                     hintStyle: TextStyle(
                       color: isDark ? Colors.white54 : Colors.black45,

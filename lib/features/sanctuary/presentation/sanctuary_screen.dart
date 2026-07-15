@@ -15,10 +15,41 @@ import 'leaf_exercise_screen.dart';
 
 import 'package:provider/provider.dart';
 
-class SanctuaryScreen extends StatelessWidget {
+class SanctuaryScreen extends StatefulWidget {
   final VoidCallback? onBack;
+  final bool isActive;
 
-  const SanctuaryScreen({super.key, this.onBack});
+  const SanctuaryScreen({super.key, this.onBack, this.isActive = true});
+
+  @override
+  State<SanctuaryScreen> createState() => _SanctuaryScreenState();
+}
+
+class _SanctuaryScreenState extends State<SanctuaryScreen> {
+  bool _isCopePopupShowing = false;
+
+  @override
+  void didUpdateWidget(covariant SanctuaryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!oldWidget.isActive && widget.isActive) {
+      _showCopePopupAfterTabSelection();
+    }
+  }
+
+  void _showCopePopupAfterTabSelection() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isCopePopupShowing) return;
+
+      final appState = context.read<AppState>();
+      if (appState.hideCopeMethodsMessage) return;
+
+      _isCopePopupShowing = true;
+      _showCopeMethodsDialog(appState).whenComplete(() {
+        _isCopePopupShowing = false;
+      });
+    });
+  }
 
   void _navigateToScreen(BuildContext context, Widget screen) {
     Navigator.push(
@@ -41,6 +72,81 @@ class SanctuaryScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _showCopeMethodsDialog(AppState appState) async {
+    var doNotShowAgain = false;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 56,
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
+              title: Text(
+                'How to cope with anxiety?',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: SizedBox(
+                height: 390,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Coping tools help you interrupt the anxiety spiral in the moment. They can distract your mind, steady your body, and give your nervous system a small signal of safety.',
+                      style: TextStyle(height: 1.45),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Choose one tool at a time. You do not need to feel calm immediately; even a tiny pause, breath, laugh, or grounding moment can help the wave pass.',
+                      style: TextStyle(height: 1.45),
+                    ),
+                    const Spacer(),
+                    CheckboxListTile(
+                      value: doNotShowAgain,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          doNotShowAgain = value ?? false;
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: primaryColor,
+                      title: const Text(
+                        'Do not show this message again',
+                        style: TextStyle(fontSize: 14, height: 1.25),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () async {
+                    if (doNotShowAgain) {
+                      await appState.setHideCopeMethodsMessage(true);
+                    }
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -72,12 +178,13 @@ class SanctuaryScreen extends StatelessWidget {
                               ? Colors.white.withAlpha(13)
                               : Colors.black.withAlpha(8),
                         ),
-                        onPressed: onBack ?? () => Navigator.maybePop(context),
+                        onPressed:
+                            widget.onBack ?? () => Navigator.maybePop(context),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          "Calm your mind",
+                          "Cope with anxiety",
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.headlineMedium
@@ -85,26 +192,49 @@ class SanctuaryScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _VanquishWithGwenButton(
-                        onTap: () => openGwenChatOrSubscription(
+                      _VanquishWithGwynButton(
+                        onTap: () => openGwynChatOrSubscription(
                           context,
-                          title: 'Cope with Gwen',
+                          title: 'Cope with Gwyn',
                           pageContext:
-                              'The user opened Gwen from the calm tools screen with grounding, breathing, drawing, meditations, affirmations, and reflection tools.',
+                              'The user opened Gwyn from the calm tools screen with grounding, breathing, drawing, meditations, affirmations, and reflection tools.',
+                          suggestedPrompts: const [
+                            'Help me calm down right now',
+                            'Distract me from panic',
+                            'Give me a grounding exercise',
+                            'Tell me something reassuring',
+                          ],
+                          previewBeforeSubscription: true,
+                          previewDialogMessage:
+                              'Here you can chat with Gwyn about coping with anxiety. This preview uses built-in example responses so you can see how Gwyn replies before subscribing.',
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    'Easy you anxiety with one of these excercises',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? Colors.white60
-                          : Colors.black.withAlpha(153),
-                      height: 1.4,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Easy you anxiety with one of these excercises',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? Colors.white60
+                                : Colors.black.withAlpha(153),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _CopeHelpButton(
+                        onTap: () {
+                          final appState = context.read<AppState>();
+                          _showCopeMethodsDialog(appState);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -116,8 +246,9 @@ class SanctuaryScreen extends StatelessWidget {
                   _SanctuaryCard(
                     title: "Draw & Guess",
                     desc:
-                        "Sketch anything on the canvas and let Gwen make a playful guess.",
+                        "Sketch anything on the canvas and let Gwyn make a playful guess.",
                     icon: Icons.brush_rounded,
+                    imageAsset: 'assets/images/gwyn-draw.png',
                     color: Colors.deepPurple.shade300,
                     onTap: () =>
                         _navigateToScreen(context, const DrawingGuessScreen()),
@@ -136,15 +267,14 @@ class SanctuaryScreen extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   _SanctuaryCard(
-                    title: "Let Gwen tell you a joke",
-                    desc:
-                        "Let Gwen find a gentle, relaxing joke for a small smile.",
+                    title: "Let Gwyn tell a joke",
+                    desc: "Let Gwyn tell a good joke for a smile.",
                     icon: Icons.sentiment_satisfied_alt_rounded,
                     imageAsset: 'assets/images/gwen_funny2.png',
                     color: Colors.orange.shade600,
                     onTap: () => openSubscribedFeatureOrSubscription(
                       context,
-                      const GwenJokeScreen(),
+                      const GwynJokeScreen(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -242,10 +372,10 @@ class SanctuaryScreen extends StatelessWidget {
   }
 }
 
-class _VanquishWithGwenButton extends StatelessWidget {
+class _VanquishWithGwynButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _VanquishWithGwenButton({required this.onTap});
+  const _VanquishWithGwynButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +406,7 @@ class _VanquishWithGwenButton extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Vanquish with Gwen',
+              'Vanquish with Gwyn',
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -288,6 +418,36 @@ class _VanquishWithGwenButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CopeHelpButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _CopeHelpButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return Tooltip(
+      message: 'How to cope with anxiety?',
+      child: IconButton(
+        onPressed: onTap,
+        icon: const Icon(Icons.help_outline_rounded),
+        color: primaryColor,
+        iconSize: 20,
+        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          backgroundColor: isDark
+              ? Colors.white.withAlpha(13)
+              : primaryColor.withAlpha(20),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
     );

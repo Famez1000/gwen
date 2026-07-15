@@ -12,7 +12,7 @@ class _LetGoScreenState extends State<LetGoScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   late final AnimationController _balloonController;
-  late final Animation<double> _floatOffset;
+  late final Animation<double> _floatProgress;
   late final Animation<double> _floatScale;
   late final Animation<double> _floatOpacity;
 
@@ -26,7 +26,7 @@ class _LetGoScreenState extends State<LetGoScreen>
       vsync: this,
       duration: const Duration(seconds: 5),
     );
-    _floatOffset = Tween<double>(begin: 0, end: -520).animate(
+    _floatProgress = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _balloonController, curve: Curves.easeInOutCubic),
     );
     _floatScale = Tween<double>(begin: 1, end: 0.32).animate(
@@ -181,7 +181,7 @@ class _LetGoScreenState extends State<LetGoScreen>
                                     _BalloonReleaseArea(
                                       controller: _textController,
                                       animation: _balloonController,
-                                      floatOffset: _floatOffset,
+                                      floatProgress: _floatProgress,
                                       floatScale: _floatScale,
                                       floatOpacity: _floatOpacity,
                                       isReleased: _isReleased,
@@ -189,42 +189,46 @@ class _LetGoScreenState extends State<LetGoScreen>
                                       isDark: isDark,
                                       onChanged: () => setState(() {}),
                                     ),
-                                    if (!_isReleased) ...[
-                                      const SizedBox(height: 8),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton.icon(
-                                          onPressed:
-                                              _textController.text
-                                                  .trim()
-                                                  .isEmpty
-                                              ? null
-                                              : _releaseBalloon,
-                                          icon: const Icon(
-                                            Icons.air_rounded,
-                                            size: 28,
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed:
+                                            _isReleased ||
+                                                _textController.text
+                                                    .trim()
+                                                    .isEmpty
+                                            ? null
+                                            : _releaseBalloon,
+                                        icon: const Icon(
+                                          Icons.air_rounded,
+                                          size: 28,
+                                        ),
+                                        label: const Text(
+                                          'Let it go',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
                                           ),
-                                          label: const Text(
-                                            'Let it go',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: primaryColor,
+                                          foregroundColor: Colors.white,
+                                          disabledBackgroundColor: primaryColor
+                                              .withAlpha(isDark ? 96 : 116),
+                                          disabledForegroundColor: Colors.white
+                                              .withAlpha(190),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 18,
                                           ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: primaryColor,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 18,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(22),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              22,
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -244,7 +248,7 @@ class _LetGoScreenState extends State<LetGoScreen>
 class _BalloonReleaseArea extends StatelessWidget {
   final TextEditingController controller;
   final Animation<double> animation;
-  final Animation<double> floatOffset;
+  final Animation<double> floatProgress;
   final Animation<double> floatScale;
   final Animation<double> floatOpacity;
   final bool isReleased;
@@ -255,7 +259,7 @@ class _BalloonReleaseArea extends StatelessWidget {
   const _BalloonReleaseArea({
     required this.controller,
     required this.animation,
-    required this.floatOffset,
+    required this.floatProgress,
     required this.floatScale,
     required this.floatOpacity,
     required this.isReleased,
@@ -271,11 +275,15 @@ class _BalloonReleaseArea extends StatelessWidget {
       child: AnimatedBuilder(
         animation: animation,
         builder: (context, child) {
+          final releaseDistance = MediaQuery.sizeOf(context).height + 360;
+          final verticalOffset = -releaseDistance * floatProgress.value;
+
           return Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               Transform.translate(
-                offset: Offset(0, floatOffset.value),
+                offset: Offset(0, verticalOffset),
                 child: Transform.scale(
                   scale: floatScale.value,
                   child: Opacity(

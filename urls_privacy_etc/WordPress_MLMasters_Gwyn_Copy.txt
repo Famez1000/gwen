@@ -1,0 +1,164 @@
+ML Masters homepage
+===================
+
+Page goal
+---------
+Use this page as a simple overview of your apps. At the moment it can feature Gwyn as the first app, with room to add more apps later.
+
+Recommended page title
+----------------------
+ML Masters
+
+Recommended headline
+--------------------
+Thoughtful apps for calmer, healthier daily life.
+
+Recommended intro text
+----------------------
+ML Masters creates practical, supportive apps that help people take small steps toward feeling better. Our first app is Gwyn, an anxiety-support companion with breathing exercises, grounding tools, journaling, mood check-ins, reminders, progress insights, calming activities, and gentle AI-powered guidance.
+
+App card for Gwyn
+-----------------
+Title:
+Gwyn
+
+Short description:
+Gwyn helps you manage anxious moments with simple tools for breathing, grounding, journaling, reflection, mood tracking, and supportive guidance.
+
+Button text:
+Learn more about Gwyn
+
+Image:
+Use one of these app images:
+- assets/images/icon3_512x512.png
+- assets/images/gwyn-draw.png
+- assets/images/gwyn-onboarding1.png
+
+Link target:
+https://mlmasters.com/gwyn/
+
+WordPress steps for the homepage
+--------------------------------
+1. Go to WordPress Admin > Pages.
+2. Open the ML Masters homepage.
+3. Add an Image block for Gwyn.
+4. Upload or select the Gwyn image.
+5. Click the image, choose the link icon, and enter:
+   https://mlmasters.com/gwyn/
+6. Add the title, short description, and button text from above.
+7. Make sure the button links to:
+   https://mlmasters.com/gwyn/
+8. Update or publish the page.
+
+
+Gwyn info page
+==============
+
+Recommended page URL
+--------------------
+https://mlmasters.com/gwyn/
+
+Recommended page title
+----------------------
+Gwyn
+
+Recommended headline
+--------------------
+Your pocket companion for anxious moments.
+
+Recommended intro text
+----------------------
+Gwyn is designed to help you manage anxiety with warm, practical support. The app brings together breathing exercises, grounding techniques, journaling, mood check-ins, reminders, progress tracking, calming activities, and supportive AI-powered guidance.
+
+Gwyn does not tell you to "just calm down." Instead, it guides you through small, manageable steps: breathe, notice, write, ground yourself, reflect, and keep moving forward.
+
+Section: What Gwyn helps with
+-----------------------------
+Breathing exercises
+Use calming breathing patterns to slow your breathing, relax your body, and create space between yourself and anxious thoughts.
+
+Journaling and reflection
+Write about your day, track your anxiety level, and let Gwyn turn your journal entries into kind, helpful reflections.
+
+Mood and anxiety tracking
+Record how you feel, notice patterns over time, and follow your progress through simple, supportive insights.
+
+Grounding tools
+Use sensory grounding exercises to reconnect with the present moment when anxiety feels overwhelming.
+
+Gentle reminders
+Set reminders to check in with yourself, breathe, reflect, or simply take a calming moment.
+
+Progress insights
+Review your breathing sessions, calming streaks, anxiety logs, and reflections to discover what helps you most.
+
+Calming activities
+Explore supportive exercises, affirmations, gentle distractions, and soothing activities whenever your mind needs a reset.
+
+Chat with Gwyn
+Talk with Gwyn when anxiety feels overwhelming. Gwyn offers warm, practical support, grounding suggestions, and gentle encouragement.
+
+Section: A simple way to begin
+------------------------------
+Open Gwyn when you feel anxious, unsettled, or overloaded. Choose a breathing exercise, write a quick journal entry, ground yourself in the present moment, or check in with how you feel. Over time, Gwyn helps you understand what supports you best.
+
+Call to action
+--------------
+Button text:
+Get Gwyn
+
+Optional supporting text:
+Available for Android and iOS.
+
+Note: Add the real Google Play and App Store links when they are ready.
+
+Important disclaimer
+--------------------
+Gwyn is not a medical device, therapist, crisis service, or replacement for professional medical or mental health care. If you are in immediate danger, think you may harm yourself or someone else, or need urgent help, contact your local emergency services or a trusted person immediately.
+
+WordPress steps for the Gwyn page
+---------------------------------
+1. Go to WordPress Admin > Pages > Add New Page.
+2. Set the page title to:
+   Gwyn
+3. Set the page slug/permalink to:
+   gwyn
+4. Add the headline, intro text, feature sections, call to action, and disclaimer from this file.
+5. Add screenshots or app images between sections.
+6. Publish the page.
+7. Go back to the homepage and link the Gwyn image to:
+   https://mlmasters.com/gwyn/
+
+
+Suggested simple page layout
+============================
+
+Homepage layout
+---------------
+1. Header/navigation
+2. Short ML Masters intro
+3. Gwyn app card with image
+4. Footer with Privacy Policy and Terms links
+
+Gwyn page layout
+----------------
+1. Hero section with Gwyn image, headline, intro, and Get Gwyn button
+2. Feature section with 6 to 8 short feature blocks
+3. Screenshots section
+4. Gentle disclaimer
+5. Footer with Privacy Policy and Terms links
+
+
+Footer links
+============
+
+Suggested footer items
+----------------------
+Privacy Policy
+Terms and Conditions
+Contact
+
+Suggested Gwyn policy files from this project
+---------------------------------------------
+- urls_privacy_etc/PrivacyPolicy_Gwyn.html
+- urls_privacy_etc/TermsAndConditions_Gwyn.html

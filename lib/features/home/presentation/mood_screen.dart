@@ -9,6 +9,7 @@ import '../../breathing/presentation/breathing_screen.dart';
 import '../../drawing_guess/presentation/drawing_guess_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
 import '../../sanctuary/presentation/leaf_exercise_screen.dart';
+import '../../meditations/presentation/meditations_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
 
 class PanicMoodScreen extends StatelessWidget {
@@ -86,6 +87,19 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
   late final AppState _appState;
   Timer? _saveDebounce;
 
+  String get _moodPopupText {
+    switch (widget.emoticonIndex) {
+      case 1:
+        return 'A panic attack can feel so intense that it seems as if you are going to die. Your first goal is to reconnect with reality in the present moment. So, read it out loud, then distract your mind with upbeat music and effective mind-shifting activities';
+      case 2:
+        return 'Feeling anxious all the time is exhausting and can wear you down. Calm your mind by gently redirecting your attention with effective exercises, relaxing music, and guided meditation';
+      case 3:
+        return 'In those moments when you\'re not trapped in crippling survival mode, so your anxiety has eased, work on healing. First, understand your anxiety. Then, gradually vanquish it, one step at a time';
+      default:
+        return '';
+    }
+  }
+
   String get _moodLabel {
     switch (widget.emoticonIndex) {
       case 1:
@@ -117,7 +131,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
       case 2:
         return 'assets/images/gwen_not_ok.png';
       case 3:
-        return 'assets/images/em_3.png';
+        return 'assets/images/gwyn_survived.png';
       default:
         return 'assets/images/gwen_panic.png';
     }
@@ -130,6 +144,12 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
     _realityTextController = TextEditingController(
       text: _trimTrailingWhitespace(_appState.moodRealityText),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _moodPopupText.isEmpty || _appState.hideMoodEntryPopup) {
+        return;
+      }
+      _showMoodEntryPopup(context, _moodPopupText);
+    });
   }
 
   @override
@@ -213,14 +233,14 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                 children: [
                   Expanded(
                     child: _PanicImageTextBox(
-                      text: 'Gwen is here with you',
+                      text: 'Gwyn is here with you',
                       isDark: isDark,
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: GestureDetector(
-                      onTap: _openMoodGwen,
+                      onTap: _openMoodGwyn,
                       child: Image.asset(
                         _imageAsset,
                         width: 112,
@@ -231,7 +251,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                   ),
                   Expanded(
                     child: _PanicImageTextBox(
-                      text: "Take a slow breath and let's calm down",
+                      text: "Take a slow breath and let's relax",
                       isDark: isDark,
                     ),
                   ),
@@ -240,7 +260,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
             else
               Center(
                 child: GestureDetector(
-                  onTap: _openMoodGwen,
+                  onTap: _openMoodGwyn,
                   child: Image.asset(
                     _imageAsset,
                     width: 120,
@@ -277,13 +297,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
       children: [
         _MoodSectionCard(
           title: 'First step, back to reality',
-          trailing: IconButton(
-            icon: Icon(
-              Icons.help_outline_rounded,
-              color: isDark ? Colors.white70 : Colors.black54,
-            ),
-            onPressed: () => _showPanicHelp(context),
-          ),
+          trailing: _buildPanicHelpButton(context, isDark),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final textLines = _lineCountForText(
@@ -337,29 +351,58 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
           onOpenFavoriteSong: _openFavoriteSong,
           onEditFavoriteSongUrl: _editFavoriteSongUrl,
           hasSong: _appState.moodFavoriteSongUrl.isNotEmpty,
+          trailing: _buildPanicHelpButton(
+            context,
+            isDark,
+            text:
+                'Distract your mind with upbeat, cheerful music. Play it as loudly as you can, and use headphones if available',
+          ),
         ),
         const SizedBox(height: 16),
         _ExerciseSectionCard(
-          title: "Third step, select a soothing exercise",
+          title: 'Third step, distract your mind with soothing exercises',
+          trailing: _buildPanicHelpButton(
+            context,
+            isDark,
+            text:
+                'Here are three proven exercises to help redirect your mind\'s attention. You\'ll find more exercises like these in the "Cope" section.',
+          ),
           actions: [
+            _ExerciseIconButton(
+              icon: Icons.draw_rounded,
+              imageAsset: 'assets/images/gwyn-draw.png',
+              label: 'Draw & Guess',
+              onTap: () => _openExercise(const DrawingGuessScreen()),
+            ),
             _ExerciseIconButton(
               icon: Icons.filter_center_focus_rounded,
               label: 'Grounding',
               onTap: () => _openExercise(GroundingScreen(appState: _appState)),
             ),
             _ExerciseIconButton(
-              icon: Icons.air_rounded,
-              label: 'Breathing',
-              onTap: () => _openExercise(BreathingScreen(appState: _appState)),
-            ),
-            _ExerciseIconButton(
-              icon: Icons.eco_rounded,
-              label: 'Leaf',
-              onTap: () => _openExercise(const LeafExerciseScreen()),
+              icon: Icons.spa_rounded,
+              label: 'Meditation',
+              onTap: () => _openExercise(const MeditationsScreen()),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildPanicHelpButton(
+    BuildContext context,
+    bool isDark, {
+    String? text,
+  }) {
+    return IconButton(
+      icon: Icon(
+        Icons.help_outline_rounded,
+        color: isDark ? Colors.white70 : Colors.black54,
+      ),
+      onPressed: () => text == null
+          ? _showPanicHelp(context)
+          : _showPanicHelpText(context, text),
     );
   }
 
@@ -370,13 +413,13 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
           title: 'Start with this truth',
           child: _SupportText(
             text:
-                'It is OK not to feel OK. Try making this moment a little softer: unclench your jaw, drop your shoulders, and take a slow breath.',
+                'It\'s OK not to feel OK. Relax your body, let your shoulders drop, and take a deep breath.',
             isDark: isDark,
           ),
         ),
         const SizedBox(height: 16),
         _ExerciseSectionCard(
-          title: 'Gently distract your mind',
+          title: 'Distract your mind with these excercises',
           actions: [
             _ExerciseIconButton(
               icon: Icons.air_rounded,
@@ -390,6 +433,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
             ),
             _ExerciseIconButton(
               icon: Icons.draw_rounded,
+              imageAsset: 'assets/images/gwyn-draw.png',
               label: 'Draw & Guess',
               onTap: () => _openExercise(const DrawingGuessScreen()),
             ),
@@ -410,29 +454,17 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
     return Column(
       children: [
         _MoodSectionCard(
-          title: 'Only the next tiny step',
+          title: 'Use this moment to take the next step',
           child: _SupportText(
             text:
-                'Surviving counts. You do not need a big plan right now. Pick one small thing your body might need, then let that be enough for this moment.',
+                'Reflect on the reason for your anxiety. Understanding it is the first step toward healing.',
             isDark: isDark,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _MoodSectionCard(
-          title: 'Basic needs check',
-          child: Column(
-            children: [
-              _NeedLine(icon: Icons.water_drop_rounded, text: 'Drink water'),
-              const SizedBox(height: 10),
-              _NeedLine(icon: Icons.restaurant_rounded, text: 'Eat something'),
-              const SizedBox(height: 10),
-              _NeedLine(icon: Icons.bedtime_rounded, text: 'Rest your body'),
-            ],
+            // onTap: () => _goToDestination(4),
           ),
         ),
         const SizedBox(height: 16),
         _ExerciseSectionCard(
-          title: 'Low energy options',
+          title: 'Best exercises to do next',
           actions: [
             _ExerciseIconButton(
               icon: Icons.eco_rounded,
@@ -445,9 +477,10 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
               onTap: () => _goToDestination(2),
             ),
             _ExerciseIconButton(
-              icon: Icons.lightbulb_outline,
-              label: 'Learn',
-              onTap: () => _goToDestination(3),
+              icon: Icons.healing_rounded,
+              imageAsset: 'assets/images/resilient-health.png',
+              label: 'Heal',
+              onTap: () => _goToDestination(4),
             ),
           ],
         ),
@@ -599,22 +632,121 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
-  void _openMoodGwen() {
-    openGwenChatOrSubscription(
+  void _openMoodGwyn() {
+    openGwynChatOrSubscription(
       context,
       title: _headerTitle,
       pageContext:
-          'The user opened Gwen from a mood support screen after choosing their current anxiety state.',
+          'The user opened Gwyn from a mood support screen after choosing their current anxiety state.',
     );
   }
 
   void _showPanicHelp(BuildContext context) {
+    _showPanicHelpText(
+      context,
+      'Write here your truths, no matter what. That is your name, where you live, your parents loving you, etc. Any moment you panic, read this out loud to remember these truths.',
+    );
+  }
+
+  void _showMoodEntryPopup(BuildContext context, String text) {
+    var dontShowAgain = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 24,
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      text,
+                      style: const TextStyle(fontSize: 20, height: 1.45),
+                    ),
+                    const SizedBox(height: 36),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () {
+                              setDialogState(() {
+                                dontShowAgain = !dontShowAgain;
+                              });
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Checkbox(
+                                    value: dontShowAgain,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    onChanged: (value) {
+                                      setDialogState(() {
+                                        dontShowAgain = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Flexible(
+                                  child: Text(
+                                    "Don't show again",
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        TextButton(
+                          onPressed: () async {
+                            if (dontShowAgain) {
+                              await _appState.setHideMoodEntryPopup(true);
+                            }
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPanicHelpText(BuildContext context, String text) {
     showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          content: const Text(
-            'Write here your truths, no matter what. That is your name, where you live, your parents loving you, etc. Any moment you panic, read this oud loud to remember these truths.',
+          content: Text(
+            text,
+            style: const TextStyle(fontSize: 16, height: 1.4),
           ),
           actions: [
             TextButton(
@@ -630,11 +762,13 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
 
 class _ExerciseIconButton extends StatelessWidget {
   final IconData icon;
+  final String? imageAsset;
   final String label;
   final VoidCallback onTap;
 
   const _ExerciseIconButton({
     required this.icon,
+    this.imageAsset,
     required this.label,
     required this.onTap,
   });
@@ -659,12 +793,20 @@ class _ExerciseIconButton extends StatelessWidget {
                 color: primaryColor.withAlpha(31),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: primaryColor, size: 28),
+              clipBehavior: Clip.antiAlias,
+              child: imageAsset == null
+                  ? Icon(icon, color: primaryColor, size: 28)
+                  : Image.asset(
+                      imageAsset!,
+                      width: 54,
+                      height: 54,
+                      fit: BoxFit.cover,
+                    ),
             ),
             const SizedBox(height: 8),
             Text(
               label,
-              maxLines: 2,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -736,18 +878,21 @@ class _FavoriteSongCard extends StatelessWidget {
   final bool hasSong;
   final VoidCallback onOpenFavoriteSong;
   final VoidCallback onEditFavoriteSongUrl;
+  final Widget? trailing;
 
   const _FavoriteSongCard({
     this.title = 'Second step, play your favorite song',
     required this.hasSong,
     required this.onOpenFavoriteSong,
     required this.onEditFavoriteSongUrl,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return _MoodSectionCard(
       title: title,
+      trailing: trailing,
       child: Row(
         children: [
           Expanded(
@@ -865,13 +1010,19 @@ class _FavoriteSongPlayerDialogState extends State<_FavoriteSongPlayerDialog> {
 class _ExerciseSectionCard extends StatelessWidget {
   final String title;
   final List<Widget> actions;
+  final Widget? trailing;
 
-  const _ExerciseSectionCard({required this.title, required this.actions});
+  const _ExerciseSectionCard({
+    required this.title,
+    required this.actions,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
     return _MoodSectionCard(
       title: title,
+      trailing: trailing,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: actions
@@ -904,44 +1055,6 @@ class _SupportText extends StatelessWidget {
         height: 1.5,
         color: isDark ? Colors.white70 : Colors.black.withAlpha(166),
       ),
-    );
-  }
-}
-
-class _NeedLine extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _NeedLine({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).primaryColor;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Row(
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: primaryColor.withAlpha(31),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: primaryColor, size: 21),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white70 : Colors.black87,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1119,12 +1232,12 @@ class _MoodBottomBar extends StatelessWidget {
             label: 'Understand',
           ),
           NavigationDestination(
-            icon: Icon(
-              Icons.hub_outlined,
+            icon: ImageIcon(
+              const AssetImage('assets/images/resilient-health.png'),
               color: isDark ? Colors.white54 : Colors.black54,
             ),
-            selectedIcon: Icon(
-              Icons.hub_rounded,
+            selectedIcon: ImageIcon(
+              const AssetImage('assets/images/resilient-health.png'),
               color: Theme.of(context).primaryColor,
             ),
             label: 'Heal',

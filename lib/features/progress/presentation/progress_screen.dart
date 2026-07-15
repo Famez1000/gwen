@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/gemini_service.dart';
+
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/application/subscription_gate.dart';
 
 class ProgressScreen extends StatefulWidget {
   final AppState appState;
@@ -15,136 +14,32 @@ class ProgressScreen extends StatefulWidget {
 }
 
 class _ProgressScreenState extends State<ProgressScreen> {
-  bool _isAnalyzing = false;
-  String? _gwenAnalysis;
-
-  Future<void> _confirmAnalyzeWithGwen() async {
-    final shouldAnalyze = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Analyze with Gwen?'),
-          content: const Text(
-            'Gwen will review your recent anxiety levels, calm progress, and completed sessions to create a short reflection.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Start analysis'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldAnalyze == true && mounted) {
-      await _analyzeWithGwen();
-    }
-  }
-
-  void _openSubscription() {
-    openGwenChatOrSubscription(
-      context,
-      title: 'Progress with Gwen',
-      pageContext:
-          'The user opened Gwen from the progress screen, where they track anxiety logs, journal scores, calm streaks, and breathing sessions.',
-    );
-  }
-
-  Future<void> _analyzeWithGwen() async {
-    final progressText = _buildProgressTextForAnalysis();
-
-    setState(() {
-      _isAnalyzing = true;
-      _gwenAnalysis = null;
-    });
-
-    String analysis;
-    try {
-      analysis = await GeminiService.instance.generateContextualGwenResponse(
-        userMessage:
-            'Analyze this progress data and respond with a short supportive reflection plus one gentle next step:\n\n$progressText',
-        pageTitle: 'Progress',
-        pageContext:
-            'The user is viewing progress data in an anxiety support app. Data may include calm-day streak, breathing sessions, breaths taken, and before/after anxiety intervention logs. Do not diagnose or overstate patterns.',
-      );
-    } catch (error) {
-      debugPrint('[ProgressScreen] Gwen progress analysis failed: $error');
-      analysis = _generateLocalProgressAnalysis();
-    }
-
-    if (!mounted) return;
-    await widget.appState.saveProgressAnalysis(analysis);
-    if (!mounted) return;
-    setState(() {
-      _isAnalyzing = false;
-      _gwenAnalysis = analysis;
-    });
-  }
-
-  String _buildProgressTextForAnalysis() {
-    final logs = widget.appState.anxietyLogs;
-    final weeklyScores = _weeklyJournalAnxietyScores();
-    final averageJournalScore = _averageAnxietyScore(weeklyScores);
-    final buffer = StringBuffer()
-      ..writeln('Calm-day streak: ${widget.appState.streakCount} / 7')
-      ..writeln('Journal anxiety scores this week: ${weeklyScores.length}')
-      ..writeln(
-        averageJournalScore == null
-            ? 'Average journal anxiety score this week: No scores yet'
-            : 'Average journal anxiety score this week: ${averageJournalScore.toStringAsFixed(1)} / 10',
-      )
-      ..writeln(
-        'Weekly calm progress from journal anxiety score: ${(_weeklyCalmProgress() * 100).round()}%',
-      )
-      ..writeln(
-        'Breathing sessions completed: ${widget.appState.breathingSessionsCompleted}',
-      )
-      ..writeln(
-        'Estimated breaths taken: ${widget.appState.breathingSessionsCompleted * 25}',
-      )
-      ..writeln('Recent anxiety logs: ${logs.length}');
-
-    for (final log in logs.take(5)) {
-      final date = log['date'] as String? ?? 'Unknown date';
-      final pre = log['preScore'] as int? ?? 0;
-      final post = log['postScore'] as int? ?? 0;
-      final symptoms = List<String>.from(log['symptoms'] ?? []);
-
-      buffer
-        ..writeln()
-        ..writeln('Date: $date')
-        ..writeln('Before score: $pre / 10')
-        ..writeln('After score: $post / 10')
-        ..writeln('Focus: ${symptoms.join(', ')}');
-    }
-
-    return buffer.toString().trim();
-  }
-
-  List<int> _weeklyJournalAnxietyScores() {
+  List<_AnxietyChartPoint> _monthlyJournalAnxietyPoints() {
     final today = DateTime.now();
-    final startOfWeek = DateTime(
-      today.year,
-      today.month,
-      today.day,
-    ).subtract(const Duration(days: 6));
+    final endDate = DateTime(today.year, today.month, today.day);
+    final startDate = endDate.subtract(const Duration(days: 29));
 
-    return widget.appState.dailyJournalEntries
-        .where((entry) {
+    final points = widget.appState.dailyJournalEntries
+        .map((entry) {
           final rawDate = entry['date'] as String?;
-          if (rawDate == null) return false;
+          final rawScore = entry['anxietyScore'] as int?;
+          if (rawDate == null || rawScore == null) return null;
+
           final date = DateTime.tryParse(rawDate);
-          if (date == null) return false;
+          if (date == null) return null;
+
           final dateOnly = DateTime(date.year, date.month, date.day);
-          return !dateOnly.isBefore(startOfWeek);
+          if (dateOnly.isBefore(startDate) || dateOnly.isAfter(endDate)) {
+            return null;
+          }
+
+          return _AnxietyChartPoint(date: dateOnly, score: rawScore);
         })
-        .map((entry) => entry['anxietyScore'] as int? ?? 0)
+        .whereType<_AnxietyChartPoint>()
         .toList();
+
+    points.sort((a, b) => a.date.compareTo(b.date));
+    return points;
   }
 
   double? _averageAnxietyScore(List<int> scores) {
@@ -152,41 +47,121 @@ class _ProgressScreenState extends State<ProgressScreen> {
     return scores.reduce((a, b) => a + b) / scores.length;
   }
 
-  double _weeklyCalmProgress() {
-    final averageScore = _averageAnxietyScore(_weeklyJournalAnxietyScores());
-    if (averageScore == null) return 0;
-    return ((10 - averageScore) / 10).clamp(0.0, 1.0);
-  }
+  List<String> _extractiveJournalSummary() {
+    final today = DateTime.now();
+    final endDate = DateTime(today.year, today.month, today.day);
+    final startDate = endDate.subtract(const Duration(days: 29));
+    final sentences = <_RankedSentence>[];
 
-  String _generateLocalProgressAnalysis() {
-    final logs = widget.appState.anxietyLogs;
-    final sessions = widget.appState.breathingSessionsCompleted;
-    final streak = widget.appState.streakCount;
+    for (final entry in widget.appState.dailyJournalEntries) {
+      final rawDate = entry['date'] as String?;
+      final feelings = (entry['feelings'] as String? ?? '').trim();
+      if (rawDate == null || feelings.isEmpty) continue;
 
-    if (logs.isEmpty && sessions == 0 && streak == 0) {
-      return 'Gwen does not see much progress data yet. Try one calming exercise today, then come back here to notice what changed.';
+      final date = DateTime.tryParse(rawDate);
+      if (date == null) continue;
+
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      if (dateOnly.isBefore(startDate) || dateOnly.isAfter(endDate)) continue;
+
+      for (final sentence in _splitIntoSentences(feelings)) {
+        if (_tokenize(sentence).length < 3) continue;
+        sentences.add(
+          _RankedSentence(sentence: sentence, order: sentences.length),
+        );
+      }
     }
 
-    final changes = logs.map((log) {
-      final pre = log['preScore'] as int? ?? 0;
-      final post = log['postScore'] as int? ?? 0;
-      return pre - post;
-    }).toList();
-    final averageChange = changes.isEmpty
-        ? 0.0
-        : changes.reduce((a, b) => a + b) / changes.length;
+    if (sentences.isEmpty) return const [];
 
-    return 'Gwen noticed $sessions completed breathing ${sessions == 1 ? 'session' : 'sessions'} and $streak calm ${streak == 1 ? 'day' : 'days'}. Your recent before-to-after anxiety shift averages ${averageChange.toStringAsFixed(1)} points. A gentle next step: repeat one tool that has helped before.';
+    final frequencies = <String, int>{};
+    for (final sentence in sentences) {
+      for (final token in _tokenize(sentence.sentence)) {
+        frequencies[token] = (frequencies[token] ?? 0) + 1;
+      }
+    }
+
+    final ranked =
+        sentences.map((sentence) {
+          final tokens = _tokenize(sentence.sentence);
+          final score =
+              tokens.fold<double>(
+                0,
+                (total, token) => total + (frequencies[token] ?? 0),
+              ) /
+              tokens.length;
+          return sentence.copyWith(score: score);
+        }).toList()..sort((a, b) {
+          final scoreCompare = b.score.compareTo(a.score);
+          if (scoreCompare != 0) return scoreCompare;
+          return a.order.compareTo(b.order);
+        });
+
+    final selected = ranked.take(3).toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+    return selected.map((sentence) => sentence.sentence).toList();
+  }
+
+  List<String> _splitIntoSentences(String text) {
+    return text
+        .split(RegExp(r'(?<=[.!?])\s+|\n+'))
+        .map((sentence) => sentence.trim())
+        .where((sentence) => sentence.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _tokenize(String sentence) {
+    const stopWords = {
+      'a',
+      'an',
+      'and',
+      'are',
+      'as',
+      'at',
+      'be',
+      'but',
+      'by',
+      'for',
+      'from',
+      'had',
+      'has',
+      'have',
+      'i',
+      'in',
+      'is',
+      'it',
+      'me',
+      'my',
+      'of',
+      'on',
+      'or',
+      'so',
+      'that',
+      'the',
+      'this',
+      'to',
+      'was',
+      'were',
+      'with',
+    };
+
+    return sentence
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.length > 2 && !stopWords.contains(token))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
-    final analyses = widget.appState.progressAnalyses;
-    final weeklyScores = _weeklyJournalAnxietyScores();
-    final weeklyAverageAnxiety = _averageAnxietyScore(weeklyScores);
-    final weeklyProgress = _weeklyCalmProgress();
+    final monthlyAnxietyPoints = _monthlyJournalAnxietyPoints();
+    final monthlyAverageAnxiety = _averageAnxietyScore(
+      monthlyAnxietyPoints.map((point) => point.score).toList(),
+    );
+    final monthlyAverageProgress = (monthlyAverageAnxiety ?? 0) / 10;
+    final summarySentences = _extractiveJournalSummary();
 
     return Scaffold(
       body: SafeArea(
@@ -223,12 +198,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      _AnalyzeWithGwenButton(
-                        isAnalyzing: _isAnalyzing,
-                        onImageTap: _openSubscription,
-                        onTap: _isAnalyzing ? null : _confirmAnalyzeWithGwen,
-                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -259,14 +228,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text(
-                                "Weekly Calm Progress",
+                                "Average anxiety score",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),
                               ),
                               Text(
-                                "${(weeklyProgress * 100).round()}%",
+                                monthlyAverageAnxiety == null
+                                    ? '-'
+                                    : '${monthlyAverageAnxiety.toStringAsFixed(1)} / 10',
                                 style: TextStyle(
                                   color: primaryColor,
                                   fontWeight: FontWeight.bold,
@@ -279,7 +250,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(99),
                             child: LinearProgressIndicator(
-                              value: weeklyProgress,
+                              value: monthlyAverageProgress,
                               minHeight: 12,
                               backgroundColor: isDark
                                   ? Colors.white.withAlpha(20)
@@ -291,9 +262,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            weeklyAverageAnxiety == null
-                                ? "No journal anxiety scores saved this week yet"
-                                : "Based on ${weeklyScores.length} journal ${weeklyScores.length == 1 ? 'score' : 'scores'} this week. Average anxiety: ${weeklyAverageAnxiety.toStringAsFixed(1)} / 10",
+                            monthlyAverageAnxiety == null
+                                ? 'No journal anxiety scores saved in the last month yet'
+                                : 'Based on ${monthlyAnxietyPoints.length} journal ${monthlyAnxietyPoints.length == 1 ? 'score' : 'scores'} from the last month.',
                             style: TextStyle(
                               fontSize: 12,
                               color: isDark
@@ -306,143 +277,96 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Analysis Card
+                    // Monthly score trend
                     GlassCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            "Analysis (write here your own or use Gwen to analyze for you)",
+                            "Last month trend",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          Container(
-                            width: double.infinity,
-                            constraints: const BoxConstraints(minHeight: 160),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withAlpha(13)
-                                  : Colors.black.withAlpha(8),
-                              borderRadius: BorderRadius.circular(16),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            height: 220,
+                            child: _MonthlyAnxietyChart(
+                              points: monthlyAnxietyPoints,
+                              color: primaryColor,
+                              isDark: isDark,
                             ),
-                            child: _isAnalyzing
-                                ? Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: primaryColor,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Text('Gwen is analyzing...'),
-                                    ],
-                                  )
-                                : Text(
-                                    _gwenAnalysis ?? 'No analysis yet',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      height: 1.4,
-                                      color: _gwenAnalysis == null
-                                          ? Colors.grey
-                                          : isDark
-                                          ? Colors.white70
-                                          : Colors.black.withAlpha(190),
-                                    ),
-                                  ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            monthlyAnxietyPoints.isEmpty
+                                ? 'Save journal anxiety scores to see the last month here.'
+                                : 'Last 30 days from your daily journal anxiety score.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? Colors.white60
+                                  : Colors.black.withAlpha(153),
+                            ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
 
-                    // Historical Entries
-                    Text(
-                      "History Logs",
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (analyses.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20.0),
-                        child: Text(
-                          "Previous analysis",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
-                      )
-                    else
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: analyses.length > 5
-                            ? 5
-                            : analyses.length, // Show last 5 analyses
-                        itemBuilder: (context, index) {
-                          final analysisEntry = analyses[index];
-                          final date = DateTime.parse(
-                            analysisEntry['date'] as String,
-                          );
-                          final analysisText =
-                              analysisEntry['analysis'] as String? ?? '';
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
+                    GlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Analysis',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Offline extractive summary from your journal entries.',
+                            style: TextStyle(
+                              fontSize: 12,
                               color: isDark
-                                  ? Colors.white.withAlpha(5)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
+                                  ? Colors.white60
+                                  : Colors.black.withAlpha(153),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          if (summarySentences.isEmpty)
+                            Text(
+                              'No journal text from the last month to summarize yet.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
                                 color: isDark
-                                    ? Colors.white.withAlpha(10)
-                                    : Colors.black.withAlpha(8),
+                                    ? Colors.white70
+                                    : Colors.black.withAlpha(166),
+                              ),
+                            )
+                          else
+                            ...summarySentences.map(
+                              (sentence) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Text(
+                                  sentence,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.4,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black.withAlpha(166),
+                                  ),
+                                ),
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${date.month}/${date.day} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      analysisText,
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        height: 1.4,
-                                        color: isDark
-                                            ? Colors.white70
-                                            : Colors.black.withAlpha(166),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                        ],
                       ),
+                    ),
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -455,85 +379,261 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 }
 
-class _AnalyzeWithGwenButton extends StatelessWidget {
-  final bool isAnalyzing;
-  final VoidCallback onImageTap;
-  final VoidCallback? onTap;
+class _AnxietyChartPoint {
+  final DateTime date;
+  final int score;
 
-  const _AnalyzeWithGwenButton({
-    required this.isAnalyzing,
-    required this.onImageTap,
-    required this.onTap,
+  const _AnxietyChartPoint({required this.date, required this.score});
+}
+
+class _RankedSentence {
+  final String sentence;
+  final int order;
+  final double score;
+
+  const _RankedSentence({
+    required this.sentence,
+    required this.order,
+    this.score = 0,
+  });
+
+  _RankedSentence copyWith({double? score}) {
+    return _RankedSentence(
+      sentence: sentence,
+      order: order,
+      score: score ?? this.score,
+    );
+  }
+}
+
+class _MonthlyAnxietyChart extends StatelessWidget {
+  final List<_AnxietyChartPoint> points;
+  final Color color;
+  final bool isDark;
+
+  const _MonthlyAnxietyChart({
+    required this.points,
+    required this.color,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).primaryColor;
+    final textColor = isDark ? Colors.white70 : Colors.black87;
+    final mutedColor = isDark ? Colors.white38 : Colors.black38;
+    final gridColor = isDark
+        ? Colors.white.withAlpha(18)
+        : Colors.black.withAlpha(16);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Opacity(
-        opacity: onTap == null ? 0.62 : 1,
-        child: SizedBox(
-          width: 82,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: onImageTap,
-                child: Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: primaryColor.withAlpha(128)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/images/icon.png',
-                        width: 58,
-                        height: 58,
-                        fit: BoxFit.cover,
-                      ),
-                      if (isAnalyzing)
-                        Container(
-                          color: Colors.black.withAlpha(72),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                isAnalyzing ? 'Analyzing...' : 'Analyze with Gwen',
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  height: 1.15,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return CustomPaint(
+      painter: _MonthlyAnxietyChartPainter(
+        points: points,
+        color: color,
+        textColor: textColor,
+        mutedColor: mutedColor,
+        gridColor: gridColor,
       ),
+      child: const SizedBox.expand(),
     );
+  }
+}
+
+class _MonthlyAnxietyChartPainter extends CustomPainter {
+  final List<_AnxietyChartPoint> points;
+  final Color color;
+  final Color textColor;
+  final Color mutedColor;
+  final Color gridColor;
+
+  _MonthlyAnxietyChartPainter({
+    required this.points,
+    required this.color,
+    required this.textColor,
+    required this.mutedColor,
+    required this.gridColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const leftPadding = 34.0;
+    const rightPadding = 10.0;
+    const topPadding = 12.0;
+    const bottomPadding = 32.0;
+
+    final chartLeft = leftPadding;
+    final chartTop = topPadding;
+    final chartRight = size.width - rightPadding;
+    final chartBottom = size.height - bottomPadding;
+    final chartWidth = chartRight - chartLeft;
+    final chartHeight = chartBottom - chartTop;
+
+    final axisPaint = Paint()
+      ..color = mutedColor
+      ..strokeWidth = 1;
+    final gridPaint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+
+    for (final score in [0, 2, 4, 6, 8, 10]) {
+      final y = chartBottom - (score / 10) * chartHeight;
+      canvas.drawLine(Offset(chartLeft, y), Offset(chartRight, y), gridPaint);
+      _drawText(
+        canvas,
+        score.toString(),
+        Offset(0, y - 8),
+        mutedColor,
+        fontSize: 10,
+        width: leftPadding - 7,
+        textAlign: TextAlign.right,
+      );
+    }
+
+    canvas.drawLine(
+      Offset(chartLeft, chartTop),
+      Offset(chartLeft, chartBottom),
+      axisPaint,
+    );
+    canvas.drawLine(
+      Offset(chartLeft, chartBottom),
+      Offset(chartRight, chartBottom),
+      axisPaint,
+    );
+
+    final today = DateTime.now();
+    final endDate = DateTime(today.year, today.month, today.day);
+    final startDate = endDate.subtract(const Duration(days: 29));
+    final midDate = startDate.add(const Duration(days: 15));
+
+    _drawXLabel(
+      canvas,
+      _formatAxisDate(startDate),
+      chartLeft,
+      chartBottom + 10,
+    );
+    _drawXLabel(
+      canvas,
+      _formatAxisDate(midDate),
+      chartLeft + chartWidth / 2,
+      chartBottom + 10,
+      centered: true,
+    );
+    _drawXLabel(
+      canvas,
+      _formatAxisDate(endDate),
+      chartRight,
+      chartBottom + 10,
+      rightAligned: true,
+    );
+
+    if (points.isEmpty) {
+      _drawText(
+        canvas,
+        'No scores yet',
+        Offset(chartLeft, chartTop + chartHeight / 2 - 10),
+        mutedColor,
+        fontSize: 13,
+        width: chartWidth,
+        textAlign: TextAlign.center,
+      );
+      return;
+    }
+
+    final path = Path();
+    for (var index = 0; index < points.length; index++) {
+      final point = points[index];
+      final dayOffset = point.date.difference(startDate).inDays.clamp(0, 29);
+      final x = chartLeft + (dayOffset / 29) * chartWidth;
+      final y = chartBottom - (point.score.clamp(0, 10) / 10) * chartHeight;
+
+      if (index == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, linePaint);
+
+    final pointPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final pointBorderPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    for (final point in points) {
+      final dayOffset = point.date.difference(startDate).inDays.clamp(0, 29);
+      final x = chartLeft + (dayOffset / 29) * chartWidth;
+      final y = chartBottom - (point.score.clamp(0, 10) / 10) * chartHeight;
+      canvas.drawCircle(Offset(x, y), 4.5, pointPaint);
+      canvas.drawCircle(Offset(x, y), 4.5, pointBorderPaint);
+    }
+  }
+
+  void _drawXLabel(
+    Canvas canvas,
+    String text,
+    double x,
+    double y, {
+    bool centered = false,
+    bool rightAligned = false,
+  }) {
+    const width = 48.0;
+    final dx = rightAligned
+        ? x - width
+        : centered
+        ? x - width / 2
+        : x;
+    _drawText(
+      canvas,
+      text,
+      Offset(dx, y),
+      mutedColor,
+      fontSize: 10,
+      width: width,
+      textAlign: rightAligned
+          ? TextAlign.right
+          : centered
+          ? TextAlign.center
+          : TextAlign.left,
+    );
+  }
+
+  void _drawText(
+    Canvas canvas,
+    String text,
+    Offset offset,
+    Color color, {
+    required double fontSize,
+    required double width,
+    TextAlign textAlign = TextAlign.left,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(color: color, fontSize: fontSize),
+      ),
+      textAlign: textAlign,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: width);
+    painter.paint(canvas, offset);
+  }
+
+  String _formatAxisDate(DateTime date) => '${date.month}/${date.day}';
+
+  @override
+  bool shouldRepaint(covariant _MonthlyAnxietyChartPainter oldDelegate) {
+    return oldDelegate.points != points ||
+        oldDelegate.color != color ||
+        oldDelegate.textColor != textColor ||
+        oldDelegate.mutedColor != mutedColor ||
+        oldDelegate.gridColor != gridColor;
   }
 }

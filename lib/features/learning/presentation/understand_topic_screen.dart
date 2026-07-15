@@ -24,9 +24,9 @@ class UnderstandTopicScreen extends StatelessWidget {
   });
 
   void _openSubscription(BuildContext context) {
-    openGwenChatOrSubscription(
+    openGwynChatOrSubscription(
       context,
-      title: '$title with Gwen',
+      title: '$title with Gwyn',
       pageContext: gwenContext,
     );
   }
@@ -111,7 +111,7 @@ class UnderstandTopicScreen extends StatelessWidget {
             Positioned(
               top: 6,
               right: 16,
-              child: _AskGwenButton(onTap: () => _openSubscription(context)),
+              child: _AskGwynButton(onTap: () => _openSubscription(context)),
             ),
           ],
         ),
@@ -193,10 +193,10 @@ class _PromptCard extends StatelessWidget {
   }
 }
 
-class _AskGwenButton extends StatelessWidget {
+class _AskGwynButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _AskGwenButton({required this.onTap});
+  const _AskGwynButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -227,7 +227,7 @@ class _AskGwenButton extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Understand with Gwen',
+              'Understand with Gwyn',
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import 'my_plans_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AppState appState;
@@ -91,92 +92,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
           children: [
-            GlassCard(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 children: [
-                  Center(
-                    child: _ProfileImagePicker(
-                      imageBase64: widget.appState.profileImageBase64,
-                      onTap: _pickProfileImage,
-                      color: primaryColor,
-                      isDark: isDark,
+                  GlassCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: _ProfileImagePicker(
+                            imageBase64: widget.appState.profileImageBase64,
+                            onTap: _pickProfileImage,
+                            color: primaryColor,
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Tap to add your picture',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : Colors.black45,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'How shall Gwyn call you?',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'She will use this name when speaking with you.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _nameController,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _saveName(),
+                          decoration: InputDecoration(
+                            labelText: 'Your name',
+                            prefixIcon: const Icon(
+                              Icons.person_outline_rounded,
+                            ),
+                            filled: true,
+                            fillColor: isDark
+                                ? Colors.white.withAlpha(13)
+                                : Colors.white.withAlpha(204),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        ElevatedButton(
+                          onPressed: _saveName,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text(
+                            'Save name',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Tap to add your picture',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isDark ? Colors.white54 : Colors.black45,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'How shall Gwyn call you?',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'She will use this name when speaking with you.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isDark ? Colors.white60 : Colors.black54,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _nameController,
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _saveName(),
-                    decoration: InputDecoration(
-                      labelText: 'Your name',
-                      prefixIcon: const Icon(Icons.person_outline_rounded),
-                      filled: true,
-                      fillColor: isDark
-                          ? Colors.white.withAlpha(13)
-                          : Colors.white.withAlpha(204),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  ElevatedButton(
-                    onPressed: _saveName,
-                    style: ElevatedButton.styleFrom(
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyPlansScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.route_rounded),
+                    label: const Text('My plans'),
+                    style: FilledButton.styleFrom(
                       backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    child: const Text(
-                      'Save name',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _SubscriptionStatus(
-                    appState: widget.appState,
-                    color: primaryColor,
-                    isDark: isDark,
                   ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: _SubscriptionStatus(
+                appState: widget.appState,
+                color: primaryColor,
+                isDark: isDark,
               ),
             ),
           ],

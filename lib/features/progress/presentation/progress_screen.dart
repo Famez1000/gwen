@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../home/presentation/planning_intro_screen.dart';
 
 class ProgressScreen extends StatefulWidget {
   final AppState appState;
@@ -220,6 +221,26 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PlanningIntroScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.route_rounded),
+                      label: const Text('Plan with Gwyn'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     GlassCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

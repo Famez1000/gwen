@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,34 +17,23 @@ class NotificationService {
   static const List<DailyReminderSchedule> defaultDailyReminders = [
     DailyReminderSchedule(
       id: 1001,
-      title: 'Morning check-in',
-      body: 'Pause, name your mood, and set one gentle intention.',
-      hour: 8,
-      minute: 30,
-      isEnabled: true,
-    ),
-    DailyReminderSchedule(
-      id: 1002,
-      title: 'Breathing break',
-      body: 'Take two minutes to loosen your jaw and slow your exhale.',
-      hour: 13,
+      title: 'Gwyn reminder',
+      body: 'Pause. Breathe. You are safer than the worry says.',
+      hour: 9,
       minute: 0,
       isEnabled: true,
-    ),
-    DailyReminderSchedule(
-      id: 1003,
-      title: 'Evening reflection',
-      body: 'Write one thing you handled today, even if it was small.',
-      hour: 20,
-      minute: 0,
     ),
   ];
 
   static const String _channelId = 'daily_calm_reminders';
   static const String _channelName = 'Daily calm reminders';
   static const String _channelDescription =
-      'Gentle daily reminders to pause, breathe, and check in.';
+      'Daily reminders to pause, breathe, and check in.';
   static const String _reminderSchedulesKey = 'daily_reminder_schedules';
+  static const String _dailyGwynReminderMigrationKey =
+      'daily_gwyn_reminder_migrated';
+  static const String _dailyGwynReminderAssetPath =
+      'assets/data/gwyn_daily_reminders.json';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -131,13 +122,14 @@ class NotificationService {
 
   Future<void> scheduleDefaultDailyReminders() async {
     final reminders = await loadDailyReminderSchedules();
+    final randomGwynReminder = await _randomGwynReminderText();
 
     for (final reminder in reminders) {
       if (reminder.isEnabled) {
         await scheduleDailyReminder(
           id: reminder.id,
           title: reminder.title,
-          body: reminder.body,
+          body: reminder.id == 1001 ? randomGwynReminder : reminder.body,
           hour: reminder.hour,
           minute: reminder.minute,
         );
@@ -150,7 +142,9 @@ class NotificationService {
   Future<List<DailyReminderSchedule>> loadDailyReminderSchedules() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonText = prefs.getString(_reminderSchedulesKey);
-    if (jsonText == null) return List.of(defaultDailyReminders);
+    if (jsonText == null) {
+      return [_dailyGwynReminder(body: await _randomGwynReminderText())];
+    }
 
     try {
       final decoded = jsonDecode(jsonText) as List<dynamic>;
@@ -160,11 +154,63 @@ class NotificationService {
                 DailyReminderSchedule.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList();
-      return reminders.isEmpty ? List.of(defaultDailyReminders) : reminders;
+      if (reminders.isEmpty) {
+        return [_dailyGwynReminder(body: await _randomGwynReminderText())];
+      }
+
+      final migrated = prefs.getBool(_dailyGwynReminderMigrationKey) ?? false;
+      if (!migrated) {
+        final migratedReminders = [
+          _dailyGwynReminder(body: await _randomGwynReminderText()),
+          ...reminders.where(
+            (reminder) =>
+                reminder.id != 1001 &&
+                reminder.id != 1002 &&
+                reminder.id != 1003,
+          ),
+        ];
+        await saveDailyReminderSchedules(migratedReminders);
+        await prefs.setBool(_dailyGwynReminderMigrationKey, true);
+        return migratedReminders;
+      }
+
+      return reminders;
     } catch (error) {
       debugPrint('Reminder schedule fallback to defaults: $error');
-      return List.of(defaultDailyReminders);
+      return [_dailyGwynReminder(body: await _randomGwynReminderText())];
     }
+  }
+
+  Future<List<String>> loadDailyGwynReminderTexts() async {
+    try {
+      final jsonText = await rootBundle.loadString(_dailyGwynReminderAssetPath);
+      final decoded = jsonDecode(jsonText) as List<dynamic>;
+      return decoded
+          .map((item) => '$item'.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    } catch (error) {
+      debugPrint('Gwyn reminder text fallback to defaults: $error');
+      return defaultDailyReminders.map((reminder) => reminder.body).toList();
+    }
+  }
+
+  Future<String> _randomGwynReminderText() async {
+    final reminders = await loadDailyGwynReminderTexts();
+    if (reminders.isEmpty) return defaultDailyReminders.first.body;
+
+    return reminders[Random().nextInt(reminders.length)];
+  }
+
+  DailyReminderSchedule _dailyGwynReminder({required String body}) {
+    return DailyReminderSchedule(
+      id: 1001,
+      title: 'Gwyn reminder',
+      body: body,
+      hour: 9,
+      minute: 0,
+      isEnabled: true,
+    );
   }
 
   Future<void> saveDailyReminderSchedules(

@@ -1,9 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/state/app_state.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../profile/presentation/my_plans_screen.dart';
+import 'cope_daily_plan_table.dart';
 
 enum _PlanningDestination { cope, understand, heal }
 
@@ -39,9 +43,21 @@ class PlanningDestinationScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           children: [
+            Image.asset(
+              'assets/images/gwyn-plan.png',
+              height: 128,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 14),
             Text(
-              'In order to optimize you plan, please tell what you intent to achieve.',
-              style: TextStyle(fontSize: 15, height: 1.4, color: mutedText),
+              'To create your plan, please tell Gwyn what you want to achieve',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: mutedText,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+              ),
             ),
             const SizedBox(height: 18),
             _DestinationCard(
@@ -58,7 +74,7 @@ class PlanningDestinationScreen extends StatelessWidget {
               icon: Icons.lightbulb_outline,
               title: 'Understand',
               lines: const [
-                'I intent to discover and understand why I feel anxious.',
+                'I want to discover and understand why I feel anxious.',
               ],
               color: Colors.amber.shade700,
               onTap: () =>
@@ -71,7 +87,7 @@ class PlanningDestinationScreen extends StatelessWidget {
               lines: const [
                 "I am committed to gradually vanquishing my anxiety. I am ready to face the fears that are causing it.",
               ],
-              color: Colors.pink.shade300,
+              color: primaryColor,
               onTap: () => _openDestination(context, _PlanningDestination.heal),
             ),
           ],
@@ -114,15 +130,15 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
   }
 
   String get _title => switch (widget.destination) {
-    _PlanningDestination.cope => 'Cope Plan',
-    _PlanningDestination.understand => 'Understand Plan',
-    _PlanningDestination.heal => 'Heal Plan',
+    _PlanningDestination.cope => 'Cope Planning Result',
+    _PlanningDestination.understand => 'Understand Planning Result',
+    _PlanningDestination.heal => 'Heal Planning Result',
   };
 
   Color _color(BuildContext context) => switch (widget.destination) {
     _PlanningDestination.cope => Theme.of(context).primaryColor,
     _PlanningDestination.understand => Colors.amber.shade700,
-    _PlanningDestination.heal => Colors.pink.shade300,
+    _PlanningDestination.heal => Theme.of(context).primaryColor,
   };
 
   List<_QuestionConfig> get _questions => switch (widget.destination) {
@@ -139,12 +155,12 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
         ],
       ),
       const _QuestionConfig(
-        title: 'When anxiety appears, what happens?',
+        title: 'When anxiety appears, what do you feel?',
         subtitle: 'Select all that apply.',
         type: _QuestionType.multi,
         options: [
           'Racing thoughts',
-          'Panic attacks',
+          'Panic attack',
           'Fast heartbeat',
           'Dizziness',
           'Tight chest',
@@ -167,19 +183,26 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
           'Work',
           'School',
           'Health',
+          'Finances',
           'Relationships',
           'Driving',
           'Crowds',
           'Unknown',
         ],
       ),
+      const _QuestionConfig(
+        title: 'Additional info Gwyn could use in her plan',
+        type: _QuestionType.openGoal,
+      ),
     ],
     _PlanningDestination.understand => [
       const _QuestionConfig(
         title: 'Write down what you feel.',
         subtitle:
-            'Use your own words. This helps Gwyn understand the emotion, body feeling, or thought pattern.',
+            'Use your own words. Name the thought, feeling, and body signal as clearly as you can.',
         type: _QuestionType.openFirst,
+        hintText:
+            'Example: When I think I might fail, I feel fear in my chest.',
       ),
       const _QuestionConfig(
         title: 'How often does it occur?',
@@ -198,6 +221,16 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
         subtitle:
             'Name the moment, place, person, task, or thought that usually comes before it.',
         type: _QuestionType.openSecond,
+        hintText:
+            'Example: It arises before meetings, especially when I imagine being judged.',
+      ),
+      const _QuestionConfig(
+        title: 'What patterns have you noticed?',
+        subtitle:
+            'Look for links, such as one thought causing one feeling, or one situation causing one body signal.',
+        type: _QuestionType.openGoal,
+        hintText:
+            'Example: The thought "I am trapped" often brings panic and tight shoulders.',
       ),
     ],
     _PlanningDestination.heal => [
@@ -209,6 +242,14 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
         options: ['Yes', 'No', 'Not sure'],
       ),
       const _QuestionConfig(
+        title: 'Write the insights from your Understand plan.',
+        subtitle:
+            'Put your main cause, trigger, thought-feeling links, and certainty level here.',
+        type: _QuestionType.openSecond,
+        hintText:
+            'Example: I think my anxiety starts when I feel judged. Certainty: 7/10.',
+      ),
+      const _QuestionConfig(
         title: 'In what situation do you feel anxious?',
         subtitle:
             'Tick the situations that fit, or describe your own. Knowing this lets Gwyn make an action plan.',
@@ -218,6 +259,7 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
           'Work',
           'School',
           'Health',
+          'Finances',
           'Relationships',
           'Driving',
           'Crowds',
@@ -233,6 +275,12 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
             'This keeps the plan realistic. A small practice you repeat is better than a big plan you cannot sustain.',
         type: _QuestionType.single,
         options: ['15 min', '30 min', '1 hour', 'More than 1 hour'],
+      ),
+      const _QuestionConfig(
+        title: 'Additional info Gwyn could use in her plan',
+        type: _QuestionType.openGoal,
+        hintText:
+            'Write what you want to be able to do when the anxious thought appears.',
       ),
     ],
   };
@@ -288,31 +336,59 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
     setState(() => _isGeneratingPlan = true);
 
     final fallbackPlan = _fallbackPlan();
+    final skipGeminiForFreeCopePlan =
+        widget.destination == _PlanningDestination.cope &&
+        !context.read<AppState>().hasActiveSubscription;
+
+    if (skipGeminiForFreeCopePlan) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+
+      await _completePlanGeneration(fallbackPlan);
+      return;
+    }
+
     try {
       final results = await Future.wait([
-        Future<void>.delayed(const Duration(seconds: 3)),
+        Future<void>.delayed(const Duration(seconds: 2)),
         GeminiService.instance.generateGwenResponse(_planPrompt()),
       ]);
       final aiText = results[1] as String;
       final generatedPlan = _GeneratedPlan.tryParse(aiText) ?? fallbackPlan;
       if (!mounted) return;
 
-      setState(() {
-        _generatedPlan = generatedPlan;
-        _isGeneratingPlan = false;
-        _showResult = true;
-      });
+      await _completePlanGeneration(generatedPlan);
     } catch (error) {
       debugPrint('Gwyn plan generation fallback: $error');
-      await Future<void>.delayed(const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(seconds: 2));
       if (!mounted) return;
 
-      setState(() {
-        _generatedPlan = fallbackPlan;
-        _isGeneratingPlan = false;
-        _showResult = true;
-      });
+      await _completePlanGeneration(fallbackPlan);
     }
+  }
+
+  Future<void> _completePlanGeneration(_GeneratedPlan generatedPlan) async {
+    if (widget.destination == _PlanningDestination.cope) {
+      final appState = context.read<AppState>();
+      await appState.saveCopePlan(name: appState.nextCopePlanName);
+      if (!mounted) return;
+    }
+
+    setState(() {
+      _generatedPlan = generatedPlan;
+      _isGeneratingPlan = false;
+      _showResult = true;
+    });
+  }
+
+  void _changeAnswers() {
+    if (_isGeneratingPlan) return;
+
+    setState(() {
+      _showResult = false;
+      _isGeneratingPlan = false;
+      _step = _questions.length - 1;
+    });
   }
 
   String _planPrompt() {
@@ -336,10 +412,17 @@ Return only valid JSON in this exact shape:
 Rules:
 - Keep it gentle, realistic, and non-medical.
 - Do not diagnose.
+- Respond kindly to the answers the user gave before suggesting actions.
 - Use 4 to 6 sections.
 - Each item must be short enough for a mobile screen.
 - Mention professional or emergency help only if the answers sound severe.
-- For Heal plans, include acceptance of anxiety in the situation, one action to thwart the fear, visualization, practice with a mirror or friends, and a gentle real-world test.
+- For Cope plans, explain that coping means calming a panicking mind in the moment, not solving everything. Include affirmations such as "Everything will be fine" and "I will survive this", simple breathing, the leaf exercise, music, and setting reminders.
+- For Understand plans, focus on journaling, finding patterns, linking specific thoughts to specific feelings or body signals, and meditations that help the user listen inward.
+- For Understand plans, the result should lead toward this insight: "Aha, now I know what causes my anxiety."
+- For Heal plans, use the insights from the Understand plan as the starting point.
+- For Heal plans, include journaling, meditations, acceptance, forgiveness, letting go, visualization, practice with a mirror or friends, one action that thwarts the fear, and a gentle real-world test.
+- For Heal plans, aim to heal the anxiety response altogether when that specific thought arises.
+- For Heal plans, use at least four clear steps.
 ''';
   }
 
@@ -392,21 +475,27 @@ Rules:
   }
 
   _GeneratedPlan _fallbackPlan() {
-    final frequency = _singleAnswers[0] ?? 'your current rhythm';
-    final symptoms = _multiAnswers.isEmpty
-        ? 'your anxiety signs'
-        : _multiAnswers.join(', ');
     final trigger = _singleAnswers[2] ?? 'your main trigger';
 
     return switch (widget.destination) {
       _PlanningDestination.cope => _GeneratedPlan(
-        title: 'Your Cope Plan',
-        intro:
-            'Gwyn shaped this plan around $frequency anxiety, $symptoms, and $trigger.',
+        title: 'Your Cope plan',
+        intro: 'Gwyn read your answers and shaped a solid plan for you',
         sections: [
-          const _PlanSection('When anxiety starts', [
-            'Pause and name what is happening.',
-            'Slow your exhale for one minute.',
+          const _PlanSection('What it means to cope', [
+            'Relax your panicking mind first.',
+            'You do not have to solve everything in this moment.',
+            'Calm your nervous system enough to take the next small step.',
+          ]),
+          const _PlanSection('Affirmations', [
+            'Everything will be fine.',
+            'I will survive this.',
+            'This feeling is intense, but it will pass.',
+          ]),
+          const _PlanSection('Simple breathing', [
+            'Breathe in gently for four counts.',
+            'Breathe out slowly for six counts.',
+            'Repeat for one minute before choosing what to do next.',
           ]),
           _PlanSection('Body support', [
             if (_multiAnswers.contains('Tight chest') ||
@@ -422,53 +511,78 @@ Rules:
           ]),
           _PlanSection('Trigger plan', [
             'When $trigger appears, lower the pressure first.',
-            'Choose one small helpful action before reacting.',
+            'Use the leaf exercise when thoughts keep looping.',
+            'Play calming or upbeat music to redirect your attention.',
           ]),
-          const _PlanSection('Evening reset', [
-            'Write one thing you handled today.',
-            'Prepare one calming option for tomorrow.',
+          const _PlanSection('Reminders', [
+            'Set a reminder to breathe before stressful moments.',
+            'Set a reminder for one calming exercise each day.',
+            'Keep one affirmation visible where you will see it.',
           ]),
         ],
       ),
       _PlanningDestination.understand => _GeneratedPlan(
         title: 'Your Understand Plan',
         intro:
-            'Gwyn shaped this plan around what you feel, how often it happens, and when it arises.',
+            'This plan is designed to help you reach the moment: aha, now I know what causes my anxiety.',
         sections: [
-          const _PlanSection('Notice the pattern', [
-            'Write down what happened just before anxiety appeared.',
-            'Look for repeating moments, places, or thoughts.',
+          const _PlanSection('Journal the raw moment', [
+            'Write the anxious thought in one sentence.',
+            'Write the exact feeling that followed it.',
+            'Add the body signal: chest, stomach, throat, head, or muscles.',
           ]),
-          const _PlanSection('Name the need', [
-            'Ask what your nervous system may be trying to protect.',
-            'Separate the feeling from the facts of the situation.',
+          const _PlanSection('Find the thought-feeling link', [
+            'Look for a pattern such as: when I think this, I feel that.',
+            'Circle thoughts that repeat across different situations.',
+            'Notice which thought makes anxiety stronger.',
           ]),
-          const _PlanSection('Daily reflection', [
-            'What happened before anxiety appeared?',
-            'What did my nervous system try to protect me from?',
+          const _PlanSection('Meditate on the clue', [
+            'Sit quietly and replay one anxious moment gently.',
+            'Ask: what was I afraid this thought meant?',
+            'Let the answer arrive without forcing it.',
+          ]),
+          const _PlanSection('Pattern review', [
+            'Compare your notes every few days.',
+            'Name the likely cause in plain language.',
+            'Update your certainty level when the same link repeats.',
+          ]),
+          const _PlanSection('Result', [
+            'Write: aha, now I know what causes my anxiety.',
+            'Keep refining the cause until it feels specific and true.',
           ]),
         ],
       ),
       _PlanningDestination.heal => _GeneratedPlan(
         title: 'Healing Roadmap',
         intro:
-            'Healing starts by accepting that anxiety appears in a particular circumstance, then practicing an action that thwarts the fear.',
+            'Use your Understand insight as the map, then practice until that thought no longer creates anxiety.',
         sections: [
-          _PlanSection('Understand first', [
+          _PlanSection('Step 1: Understand first', [
             _singleAnswers[0] == 'Yes'
                 ? 'Use your Understand plan as the map for healing.'
-                : 'Healing can start, but first keep exploring what causes the anxiety.',
+                : 'Keep exploring the cause while you start gently.',
+            if (_secondTextController.text.trim().isNotEmpty)
+              'Your current insight: ${_secondTextController.text.trim()}',
           ]),
-          const _PlanSection('Choose the target moment', [
-            'Pick one situation from your answers to practice with first.',
-            'Keep the first practice small enough to repeat.',
+          const _PlanSection('Step 2: Journal the healing pattern', [
+            'Write the anxious thought at the top of the page.',
+            'Write the feeling it creates underneath.',
+            'Write a kinder, truer response beside it.',
           ]),
-          const _PlanSection('Healing practice', [
-            'Accept that anxiety appears in this circumstance.',
-            'Plan one action that directly thwarts the fear.',
-            'Visualize doing the action calmly.',
-            'Practice in front of a mirror or with friends.',
-            'Test it gently in the real world.',
+          const _PlanSection('Step 3: Acceptance and forgiveness', [
+            'Accept that anxiety is present without fighting the sensation.',
+            'Forgive yourself for needing time to heal.',
+            'Let go of the old protective story one small piece at a time.',
+          ]),
+          const _PlanSection('Step 4: Meditation and visualization', [
+            'Meditate on the thought while staying soft in the body.',
+            'Visualize meeting the thought without obeying it.',
+            'Imagine yourself responding calmly and freely.',
+          ]),
+          const _PlanSection('Step 5: Real-world practice', [
+            'Choose one small action that proves the fear wrong.',
+            'Practice in a mirror or with a trusted person.',
+            'Try a gentle real-world test and journal what changed.',
           ]),
         ],
       ),
@@ -481,6 +595,12 @@ Rules:
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.home_rounded),
+          tooltip: 'Home',
+          onPressed: () =>
+              Navigator.of(context).popUntil((route) => route.isFirst),
+        ),
         title: Text(
           _title,
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -500,6 +620,7 @@ Rules:
                   color: color,
                   plan: _generatedPlan,
                   answers: _answerReview(),
+                  onChangeAnswers: _changeAnswers,
                 )
               : _QuestionView(
                   key: ValueKey(_step),
@@ -693,21 +814,21 @@ class _QuestionView extends StatelessWidget {
       _QuestionType.openFirst => [
         _OpenQuestionField(
           controller: firstTextController,
-          hintText: 'Write the situation here',
+          hintText: question.hintText ?? 'Write the situation here',
           onChanged: onTextChanged,
         ),
       ],
       _QuestionType.openSecond => [
         _OpenQuestionField(
           controller: secondTextController,
-          hintText: 'Write what you fear might happen',
+          hintText: question.hintText ?? 'Write what you fear might happen',
           onChanged: onTextChanged,
         ),
       ],
       _QuestionType.openGoal => [
         _OpenQuestionField(
           controller: goalController,
-          hintText: 'Write your answer here',
+          hintText: question.hintText ?? 'Write your answer here',
           onChanged: onTextChanged,
         ),
       ],
@@ -750,12 +871,14 @@ class _PlanResultView extends StatelessWidget {
   final Color color;
   final _GeneratedPlan? plan;
   final List<_AnswerReview> answers;
+  final VoidCallback onChangeAnswers;
 
   const _PlanResultView({
     required this.destination,
     required this.color,
     required this.plan,
     required this.answers,
+    required this.onChangeAnswers,
   });
 
   @override
@@ -772,88 +895,368 @@ class _PlanResultView extends StatelessWidget {
         plan?.sections ??
         switch (destination) {
           _PlanningDestination.cope => const [
-            _PlanSection('Morning', ['Breathing']),
-            _PlanSection('Afternoon', ['Grounding exercise']),
-            _PlanSection('Evening', ['Reflection']),
-            _PlanSection('When panic appears', [
-              'Loud music',
-              'Distraction',
-              'Breathing',
-              'Grounding',
+            _PlanSection('What it means to cope', [
+              'Relax your panicking mind first.',
+              'You do not have to solve everything right now.',
+            ]),
+            _PlanSection('Affirmations', [
+              'Everything will be fine.',
+              'I will survive this.',
+            ]),
+            _PlanSection('Calming exercises', [
+              'Simple breathing',
+              'Leaf exercise',
+              'Music',
+            ]),
+            _PlanSection('Reminders', [
+              'Set a reminder to breathe.',
+              'Set a reminder to practice one calming exercise.',
             ]),
           ],
           _PlanningDestination.understand => const [
-            _PlanSection('Things to explore', ['Triggers', 'Body signals']),
-            _PlanSection('Possible patterns', [
-              'Timing',
-              'Avoidance',
-              'Thoughts',
+            _PlanSection('Journal the raw moment', [
+              'Write the anxious thought in one sentence.',
+              'Write the feeling and body signal that followed.',
             ]),
-            _PlanSection('Daily reflection questions', [
-              'What happened before anxiety appeared?',
-              'What did my body try to protect me from?',
+            _PlanSection('Find the pattern', [
+              'Link a thought to a specific feeling.',
+              'Look for the same link across several days.',
             ]),
-            _PlanSection('Relevant articles', [
-              'Body signals',
-              'Anxiety patterns',
+            _PlanSection('Meditate on the clue', [
+              'Sit quietly with one anxious moment.',
+              'Ask what your mind was trying to protect.',
             ]),
-            _PlanSection('Relevant exercises', [
-              'Ask yourself',
-              'Measurements',
-            ]),
-            _PlanSection('Journal prompts', [
-              'What did I notice today?',
-              'What felt familiar?',
-            ]),
+            _PlanSection('Result', ['Aha, now I know what causes my anxiety.']),
           ],
           _PlanningDestination.heal => const [
-            _PlanSection('Week 1', ['Understanding']),
-            _PlanSection('Week 2', ['Tiny exposure']),
-            _PlanSection('Week 3', ['Reflection']),
-            _PlanSection('Week 4', ['Slightly bigger challenge']),
-            _PlanSection('Week 5', ['Review']),
+            _PlanSection('Step 1: Use the insight', [
+              'Start with what you learned in Understand.',
+            ]),
+            _PlanSection('Step 2: Journal the new response', [
+              'Write the anxious thought and a kinder truth.',
+            ]),
+            _PlanSection('Step 3: Accept, forgive, let go', [
+              'Accept the sensation, forgive yourself, and release the old story.',
+            ]),
+            _PlanSection('Step 4: Practice freedom', [
+              'Meditate, visualize, and take one small action when the thought arises.',
+            ]),
           ],
         };
+
+    final isCopePlan = destination == _PlanningDestination.cope;
+    final showRoadmap =
+        destination == _PlanningDestination.understand ||
+        destination == _PlanningDestination.heal;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          plan?.intro ??
-              (destination == _PlanningDestination.cope
-                  ? 'Gwyn will change this plan every day as the planning system grows.'
-                  : 'This is your first roadmap. Soon Gwyn will adapt it from your daily check-ins.'),
-          style: TextStyle(
-            height: 1.4,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white60
-                : Colors.black.withAlpha(153),
-          ),
-        ),
-        const SizedBox(height: 20),
-        _AnswerReviewCard(answers: answers, color: color),
-        const SizedBox(height: 20),
-        ...sections.map(
-          (section) => Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: _PlanSectionCard(section: section, color: color),
-          ),
-        ),
-        const SizedBox(height: 6),
-        _PlanSectionCard(
-          section: const _PlanSection('Next, what to do with the plan?', [
-            'Choose the first action you can do today.',
-            'Keep it small enough to repeat.',
-            'Come back to the plan after trying it once.',
-          ]),
+        _AnswerReviewCard(
+          answers: answers,
           color: color,
+          onChangeAnswers: onChangeAnswers,
+        ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontSize: showRoadmap ? 21 : 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      plan?.intro ??
+                          (destination == _PlanningDestination.cope
+                              ? 'Gwyn will change this plan every day as the planning system grows.'
+                              : 'This is your first roadmap. Soon Gwyn will adapt it from your daily check-ins.'),
+                      style: TextStyle(
+                        fontSize: showRoadmap ? 13 : null,
+                        height: 1.35,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white60
+                            : Colors.black.withAlpha(153),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Image.asset(
+                'assets/images/gwyn-plan-done.png',
+                width: 86,
+                height: 86,
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (isCopePlan) ...[
+          _DailyCopePlanHeader(
+            color: color,
+            planName: context.watch<AppState>().copePlanName,
+          ),
+          const SizedBox(height: 12),
+          CopeDailyPlanTable(color: color),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyPlansScreen()),
+                );
+              },
+              icon: const Icon(Icons.route_rounded),
+              label: const Text('Your plans'),
+              style: FilledButton.styleFrom(
+                backgroundColor: color,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+          ),
+        ] else if (destination == _PlanningDestination.understand ||
+            destination == _PlanningDestination.heal) ...[
+          if (destination == _PlanningDestination.understand) ...[
+            _CertaintyLevelIndicator(
+              color: color,
+              value: _certaintyFromAnswers(answers),
+            ),
+            const SizedBox(height: 14),
+          ],
+          ...sections.map(
+            (section) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _PlanSectionCard(
+                section: section,
+                color: color,
+                compact: true,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _PlanActionButtons(color: color),
+        ] else ...[
+          Transform.translate(
+            offset: const Offset(-4, 0),
+            child: Column(
+              children: [
+                ...sections.map(
+                  (section) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _PlanSectionCard(section: section, color: color),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _PlanSectionCard(
+                  section:
+                      const _PlanSection('Next, what to do with the plan?', [
+                        'Choose the first action you can do today.',
+                        'Keep it small enough to repeat.',
+                        'Come back to the plan after trying it once.',
+                      ]),
+                  color: color,
+                ),
+                const SizedBox(height: 20),
+                _PlanActionButtons(color: color),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  double _certaintyFromAnswers(List<_AnswerReview> answers) {
+    final answered = answers
+        .where(
+          (answer) =>
+              answer.answer.trim().isNotEmpty &&
+              answer.answer.trim() != 'Not answered',
+        )
+        .length;
+    final base = answers.isEmpty ? 0.45 : answered / answers.length;
+    return (0.35 + (base * 0.5)).clamp(0.35, 0.85);
+  }
+}
+
+class _DailyCopePlanHeader extends StatelessWidget {
+  final Color color;
+  final String planName;
+
+  const _DailyCopePlanHeader({required this.color, required this.planName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 18, right: 18),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Daily activities',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () => _editPlanName(context),
+                icon: const Icon(Icons.edit_rounded, size: 16),
+                label: Text(
+                  planName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: color,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  visualDensity: VisualDensity.compact,
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editPlanName(BuildContext context) async {
+    final nextName = await showDialog<String>(
+      context: context,
+      builder: (context) => _PlanNameDialog(initialName: planName),
+    );
+
+    if (nextName == null || !context.mounted) return;
+    await context.read<AppState>().setCopePlanName(nextName);
+  }
+}
+
+class _PlanNameDialog extends StatefulWidget {
+  final String initialName;
+
+  const _PlanNameDialog({required this.initialName});
+
+  @override
+  State<_PlanNameDialog> createState() => _PlanNameDialogState();
+}
+
+class _PlanNameDialogState extends State<_PlanNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Plan name'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(hintText: 'cope plan1'),
+        onSubmitted: (value) => Navigator.pop(context, value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlanActionButtons extends StatelessWidget {
+  final Color color;
+
+  const _PlanActionButtons({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Your plan is ready. Start with the first step.',
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Start plan'),
+            style: FilledButton.styleFrom(
+              backgroundColor: color,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close_rounded),
+            label: const Text('Cancel'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: color,
+              side: BorderSide(color: color.withAlpha(120)),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -863,8 +1266,13 @@ class _PlanResultView extends StatelessWidget {
 class _AnswerReviewCard extends StatelessWidget {
   final List<_AnswerReview> answers;
   final Color color;
+  final VoidCallback onChangeAnswers;
 
-  const _AnswerReviewCard({required this.answers, required this.color});
+  const _AnswerReviewCard({
+    required this.answers,
+    required this.color,
+    required this.onChangeAnswers,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -875,9 +1283,29 @@ class _AnswerReviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Your answers',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Your answers',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onChangeAnswers,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Change answers'),
+                style: TextButton.styleFrom(
+                  foregroundColor: color,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           ...answers.map(
@@ -1143,37 +1571,118 @@ class _OpenQuestionField extends StatelessWidget {
 class _PlanSectionCard extends StatelessWidget {
   final _PlanSection section;
   final Color color;
+  final bool compact;
 
-  const _PlanSectionCard({required this.section, required this.color});
+  const _PlanSectionCard({
+    required this.section,
+    required this.color,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 14 : 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             section.title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              fontSize: compact ? 14 : 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: compact ? 8 : 10),
           ...section.items.map(
             (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: compact ? 6 : 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.check_rounded, color: color, size: 20),
+                  Icon(
+                    Icons.check_rounded,
+                    color: color,
+                    size: compact ? 17 : 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       item,
-                      style: const TextStyle(fontSize: 14, height: 1.35),
+                      style: TextStyle(
+                        fontSize: compact ? 13 : 14,
+                        height: 1.32,
+                      ),
                     ),
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CertaintyLevelIndicator extends StatelessWidget {
+  final Color color;
+  final double value;
+
+  const _CertaintyLevelIndicator({required this.color, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final percentage = (value * 100).round();
+    final label = value >= 0.75
+        ? 'Strong'
+        : value >= 0.55
+        ? 'Growing'
+        : 'Early clue';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.psychology_alt_rounded, color: color, size: 19),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Certainty level',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                ),
+              ),
+              Text(
+                '$percentage%',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 8,
+              backgroundColor: color.withAlpha(35),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            '$label: raise this when the same thought-feeling link repeats.',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.25,
+              color: isDark ? Colors.white60 : Colors.black.withAlpha(153),
             ),
           ),
         ],
@@ -1255,6 +1764,7 @@ enum _QuestionType {
 class _QuestionConfig {
   final String title;
   final String? subtitle;
+  final String? hintText;
   final _QuestionType type;
   final List<String> options;
 
@@ -1262,6 +1772,7 @@ class _QuestionConfig {
     required this.title,
     required this.type,
     this.subtitle,
+    this.hintText,
     this.options = const [],
   });
 }

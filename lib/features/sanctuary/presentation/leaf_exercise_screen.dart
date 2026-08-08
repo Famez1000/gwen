@@ -113,6 +113,17 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
         systemOverlayStyle: SystemUiOverlayStyle.light,
+        actions: [
+          IconButton(
+            tooltip: _soundEnabled ? 'Mute' : 'Turn sound on',
+            onPressed: _toggleSound,
+            icon: Icon(
+              _soundEnabled
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -161,11 +172,9 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
                   return _LeafVideoControls(
                     controller: _videoController,
                     isDark: isDark,
-                    soundEnabled: _soundEnabled,
                     loopEnabled: _loopEnabled,
                     playbackSpeed: _playbackSpeed,
                     onPlayPause: _togglePlayback,
-                    onToggleSound: _toggleSound,
                     onToggleLoop: _toggleLoop,
                     onSpeedChanged: _setPlaybackSpeed,
                     formatTime: _formatTime,
@@ -184,11 +193,9 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
 class _LeafVideoControls extends StatelessWidget {
   final VideoPlayerController controller;
   final bool isDark;
-  final bool soundEnabled;
   final bool loopEnabled;
   final double playbackSpeed;
   final VoidCallback onPlayPause;
-  final VoidCallback onToggleSound;
   final VoidCallback onToggleLoop;
   final ValueChanged<double> onSpeedChanged;
   final String Function(Duration duration) formatTime;
@@ -197,11 +204,9 @@ class _LeafVideoControls extends StatelessWidget {
   const _LeafVideoControls({
     required this.controller,
     required this.isDark,
-    required this.soundEnabled,
     required this.loopEnabled,
     required this.playbackSpeed,
     required this.onPlayPause,
-    required this.onToggleSound,
     required this.onToggleLoop,
     required this.onSpeedChanged,
     required this.formatTime,
@@ -324,15 +329,6 @@ class _LeafVideoControls extends StatelessWidget {
                     value.isPlaying
                         ? Icons.pause_rounded
                         : Icons.play_arrow_rounded,
-                  ),
-                ),
-                IconButton(
-                  tooltip: soundEnabled ? 'Mute' : 'Sound off',
-                  onPressed: onToggleSound,
-                  icon: Icon(
-                    soundEnabled
-                        ? Icons.volume_up_rounded
-                        : Icons.volume_off_rounded,
                   ),
                 ),
               ],

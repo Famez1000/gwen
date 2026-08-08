@@ -14,11 +14,15 @@ class StorageService {
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyEmergencyContact = 'emergency_contact';
   static const String _keyOnboardingCompleted = 'onboarding_completed';
+  static const String _keyOnboardingTrack = 'onboarding_track';
+  static const String _keyPendingOnboardingPlan =
+      'pending_onboarding_plan_type';
   static const String _keyUserName = 'user_name';
   static const String _keyProfileImageBase64 = 'profile_image_base64';
   static const String _keyMoodRealityText = 'mood_reality_text';
   static const String _keyMoodFavoriteSongUrl = 'mood_favorite_song_url';
   static const String _keyHideMoodEntryPopup = 'hide_mood_entry_popup';
+  static const String _keyHiddenMoodEntryPopups = 'hidden_mood_entry_popups';
   static const String _keyAffirmations = 'affirmations';
   static const String _keyRecentGwynJokes = 'recent_gwen_jokes';
   static const String _keyHealDisclaimerAccepted = 'heal_disclaimer_accepted';
@@ -26,6 +30,16 @@ class StorageService {
   static const String _keyHideUnderstandMethodsMessage =
       'hide_understand_methods_message';
   static const String _keyHideCopeMethodsMessage = 'hide_cope_methods_message';
+  static const String _keyPlanningHintSeen = 'planning_hint_seen';
+  static const String _keyReminderSwipeHintSeen = 'reminder_swipe_hint_seen';
+  static const String _keyProgressSwipeHintSeen = 'progress_swipe_hint_seen';
+  static const String _keyCopeDailyActivityDates = 'cope_daily_activity_dates';
+  static const String _keyCopePlanName = 'cope_plan_name';
+  static const String _keyCopePlanNames = 'cope_plan_names';
+  static const String _keyUnderstandPlanNames = 'understand_plan_names';
+  static const String _keyHealPlanNames = 'heal_plan_names';
+  static const String _keyHasCopePlan = 'has_cope_plan';
+  static const String _keyActivePlanId = 'active_plan_id';
   static const String _keyGroundingObjects = 'grounding_objects';
   static const String _keyGroundingTouchObjects = 'grounding_touch_objects';
   static const String _keyGroundingSoundObjects = 'grounding_sound_objects';
@@ -177,6 +191,26 @@ class StorageService {
     await _prefs.setBool(_keyOnboardingCompleted, completed);
   }
 
+  String? getOnboardingTrack() {
+    return _prefs.getString(_keyOnboardingTrack);
+  }
+
+  Future<void> setOnboardingTrack(String track) async {
+    await _prefs.setString(_keyOnboardingTrack, track);
+  }
+
+  String? getPendingOnboardingPlan() {
+    return _prefs.getString(_keyPendingOnboardingPlan);
+  }
+
+  Future<void> setPendingOnboardingPlan(String? planType) async {
+    if (planType == null || planType.trim().isEmpty) {
+      await _prefs.remove(_keyPendingOnboardingPlan);
+      return;
+    }
+    await _prefs.setString(_keyPendingOnboardingPlan, planType);
+  }
+
   String getUserName() {
     return _prefs.getString(_keyUserName) ?? '';
   }
@@ -215,6 +249,27 @@ class StorageService {
 
   Future<void> setHideMoodEntryPopup(bool hidden) async {
     await _prefs.setBool(_keyHideMoodEntryPopup, hidden);
+  }
+
+  Set<int> getHiddenMoodEntryPopups() {
+    final savedIndexes = _prefs.getStringList(_keyHiddenMoodEntryPopups) ?? [];
+
+    return savedIndexes
+        .map(int.tryParse)
+        .whereType<int>()
+        .where((index) => index >= 1 && index <= 3)
+        .toSet();
+  }
+
+  Future<void> setHiddenMoodEntryPopups(Set<int> indexes) async {
+    final normalized =
+        indexes
+            .where((index) => index >= 1 && index <= 3)
+            .map((index) => '$index')
+            .toList()
+          ..sort();
+
+    await _prefs.setStringList(_keyHiddenMoodEntryPopups, normalized);
   }
 
   List<List<String>> getAffirmations() {
@@ -275,6 +330,108 @@ class StorageService {
 
   Future<void> setHideCopeMethodsMessage(bool hidden) async {
     await _prefs.setBool(_keyHideCopeMethodsMessage, hidden);
+  }
+
+  bool getPlanningHintSeen() {
+    return _prefs.getBool(_keyPlanningHintSeen) ?? false;
+  }
+
+  Future<void> setPlanningHintSeen(bool seen) async {
+    await _prefs.setBool(_keyPlanningHintSeen, seen);
+  }
+
+  bool getReminderSwipeHintSeen() {
+    return _prefs.getBool(_keyReminderSwipeHintSeen) ?? false;
+  }
+
+  Future<void> setReminderSwipeHintSeen(bool seen) async {
+    await _prefs.setBool(_keyReminderSwipeHintSeen, seen);
+  }
+
+  bool getProgressSwipeHintSeen() {
+    return _prefs.getBool(_keyProgressSwipeHintSeen) ?? false;
+  }
+
+  Future<void> setProgressSwipeHintSeen(bool seen) async {
+    await _prefs.setBool(_keyProgressSwipeHintSeen, seen);
+  }
+
+  Map<String, List<String>> getCopeDailyActivityDates() {
+    final jsonText = _prefs.getString(_keyCopeDailyActivityDates);
+    if (jsonText == null) return {};
+
+    try {
+      final decoded = Map<String, dynamic>.from(jsonDecode(jsonText) as Map);
+      return decoded.map(
+        (key, value) => MapEntry(
+          key,
+          (value as List<dynamic>).map((date) => date.toString()).toList(),
+        ),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setCopeDailyActivityDates(
+    Map<String, List<String>> activityDates,
+  ) async {
+    await _prefs.setString(
+      _keyCopeDailyActivityDates,
+      jsonEncode(activityDates),
+    );
+  }
+
+  String getCopePlanName() {
+    return _prefs.getString(_keyCopePlanName) ?? 'Cope plan';
+  }
+
+  List<String> getCopePlanNames() {
+    return _prefs.getStringList(_keyCopePlanNames) ?? [];
+  }
+
+  Future<void> setCopePlanNames(List<String> names) async {
+    await _prefs.setStringList(_keyCopePlanNames, names);
+  }
+
+  List<String> getUnderstandPlanNames() {
+    return _prefs.getStringList(_keyUnderstandPlanNames) ?? [];
+  }
+
+  Future<void> setUnderstandPlanNames(List<String> names) async {
+    await _prefs.setStringList(_keyUnderstandPlanNames, names);
+  }
+
+  List<String> getHealPlanNames() {
+    return _prefs.getStringList(_keyHealPlanNames) ?? [];
+  }
+
+  Future<void> setHealPlanNames(List<String> names) async {
+    await _prefs.setStringList(_keyHealPlanNames, names);
+  }
+
+  bool hasStoredCopePlanName() {
+    return _prefs.containsKey(_keyCopePlanName);
+  }
+
+  Future<void> setCopePlanName(String name) async {
+    await _prefs.setString(_keyCopePlanName, name);
+  }
+
+  bool getHasCopePlan() {
+    return _prefs.getBool(_keyHasCopePlan) ?? false;
+  }
+
+  Future<void> setHasCopePlan(bool hasPlan) async {
+    await _prefs.setBool(_keyHasCopePlan, hasPlan);
+  }
+
+  String getActivePlanId() {
+    return _prefs.getString(_keyActivePlanId) ?? '';
+  }
+
+  Future<void> setActivePlanId(String planId) async {
+    await _prefs.setString(_keyActivePlanId, planId);
   }
 
   bool getDrawingGuessFreeRequestUsed() {

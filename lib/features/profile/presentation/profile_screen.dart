@@ -10,8 +10,13 @@ import 'my_plans_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AppState appState;
+  final ValueChanged<int>? onBottomDestinationSelected;
 
-  const ProfileScreen({super.key, required this.appState});
+  const ProfileScreen({
+    super.key,
+    required this.appState,
+    this.onBottomDestinationSelected,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -179,22 +184,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MyPlansScreen(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MyPlansScreen(
+                                onDestinationSelected:
+                                    widget.onBottomDestinationSelected,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.route_rounded),
+                        label: const Text('My plans'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.route_rounded),
-                    label: const Text('My plans'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
                       ),
                     ),
                   ),
@@ -236,7 +250,7 @@ class _SubscriptionStatus extends StatelessWidget {
             ? 'Gwyn Plus active'
             : appState.hasDebugSubscription
             ? 'Gwyn Plus active (debug)'
-            : 'Free plan';
+            : 'Free';
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

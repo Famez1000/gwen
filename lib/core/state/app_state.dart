@@ -1,9 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../services/review_prompt_service.dart';
 import '../services/storage_service.dart';
 
+enum OnboardingTrack { classic, personalized }
+
 class AppState extends ChangeNotifier {
+  static const int maxDailyJournalEntries = 90;
+  static const String copeAffirmationsActivity = 'affirmations';
+  static const String copeGroundingActivity = 'grounding';
+  static const String copeMeditationsActivity = 'meditations';
+  static const String copeLeafActivity = 'leaf_exercise';
+
   final StorageService _storage = StorageService();
+  static const String copePlanId = 'cope_plan_1';
   static const List<String> defaultGroundingObjects = [
     'Window',
     'Plant',
@@ -49,15 +59,27 @@ class AppState extends ChangeNotifier {
   String _emergencyContactName = 'Caregiver';
   String _emergencyContactPhone = '911';
   bool _onboardingCompleted = false;
+  OnboardingTrack _onboardingTrack = OnboardingTrack.classic;
   String _userName = '';
   String _profileImageBase64 = '';
   String _moodRealityText = '';
   String _moodFavoriteSongUrl = '';
   bool _hideMoodEntryPopup = false;
+  Set<int> _hiddenMoodEntryPopups = {};
   bool _healDisclaimerAccepted = false;
   bool _hideHealMethodsMessage = false;
   bool _hideUnderstandMethodsMessage = false;
   bool _hideCopeMethodsMessage = false;
+  bool _planningHintSeen = false;
+  bool _reminderSwipeHintSeen = false;
+  bool _progressSwipeHintSeen = false;
+  Map<String, List<String>> _copeDailyActivityDates = {};
+  String _copePlanName = 'Cope plan';
+  List<String> _copePlanNames = [];
+  List<String> _understandPlanNames = [];
+  List<String> _healPlanNames = [];
+  bool _hasCopePlan = false;
+  String _activePlanId = '';
   bool _storeSubscriptionActive = false;
   bool _debugSubscriptionActive = false;
   bool _drawingGuessFreeRequestUsed = false;
@@ -85,15 +107,42 @@ class AppState extends ChangeNotifier {
   String get emergencyContactName => _emergencyContactName;
   String get emergencyContactPhone => _emergencyContactPhone;
   bool get onboardingCompleted => _onboardingCompleted;
+  OnboardingTrack get onboardingTrack => _onboardingTrack;
   String get userName => _userName;
   String get profileImageBase64 => _profileImageBase64;
   String get moodRealityText => _moodRealityText;
   String get moodFavoriteSongUrl => _moodFavoriteSongUrl;
   bool get hideMoodEntryPopup => _hideMoodEntryPopup;
+  bool isMoodEntryPopupHidden(int moodIndex) =>
+      _hiddenMoodEntryPopups.contains(moodIndex);
   bool get healDisclaimerAccepted => _healDisclaimerAccepted;
   bool get hideHealMethodsMessage => _hideHealMethodsMessage;
   bool get hideUnderstandMethodsMessage => _hideUnderstandMethodsMessage;
   bool get hideCopeMethodsMessage => _hideCopeMethodsMessage;
+  bool get planningHintSeen => _planningHintSeen;
+  bool get reminderSwipeHintSeen => _reminderSwipeHintSeen;
+  bool get progressSwipeHintSeen => _progressSwipeHintSeen;
+  String get copePlanName => _copePlanName;
+  List<String> get copePlanNames => List.unmodifiable(_copePlanNames);
+  List<String> get understandPlanNames =>
+      List.unmodifiable(_understandPlanNames);
+  List<String> get healPlanNames => List.unmodifiable(_healPlanNames);
+  bool get hasCopePlan => _hasCopePlan;
+  bool get hasUnderstandPlan => _understandPlanNames.isNotEmpty;
+  bool get hasHealPlan => _healPlanNames.isNotEmpty;
+  bool get hasAnyPlan => _hasCopePlan || hasUnderstandPlan || hasHealPlan;
+  String get activePlanId => _activePlanId;
+  bool get isCopePlanActive => isPlanActive(_copePlanName);
+  String get nextCopePlanName =>
+      _copePlanNames.isEmpty ? 'Cope plan' : _copePlanNames.first;
+
+  String get nextUnderstandPlanName => _understandPlanNames.isEmpty
+      ? 'Understand plan'
+      : _understandPlanNames.first;
+
+  String get nextHealPlanName =>
+      _healPlanNames.isEmpty ? 'Heal plan' : _healPlanNames.first;
+
   bool get hasActiveSubscription =>
       _storeSubscriptionActive || (kDebugMode && _debugSubscriptionActive);
   bool get hasStoreSubscription => _storeSubscriptionActive;
@@ -124,6 +173,12 @@ class AppState extends ChangeNotifier {
     _reflections = _storage.getReflections();
     _dailyJournalEntries = _storage.getDailyJournalEntries();
     _sortDailyJournalEntries();
+    if (_dailyJournalEntries.length > maxDailyJournalEntries) {
+      _dailyJournalEntries = _dailyJournalEntries
+          .take(maxDailyJournalEntries)
+          .toList();
+      await _storage.saveDailyJournalEntries(_dailyJournalEntries);
+    }
     _progressAnalyses = _storage.getProgressAnalyses();
     _sortProgressAnalyses();
     _breathingSessionsCompleted = _storage.getBreathingSessionsCount();
@@ -132,16 +187,55 @@ class AppState extends ChangeNotifier {
     _hapticEnabled = _storage.getHapticEnabled();
     _themeModeIndex = _storage.getThemeMode();
     _onboardingCompleted = _storage.getOnboardingCompleted();
+    final storedOnboardingTrack = _storage.getOnboardingTrack();
+    const usePersonalizedByDefault = bool.fromEnvironment(
+      'PERSONALIZED_ONBOARDING',
+      defaultValue: false,
+    );
+    _onboardingTrack =
+        storedOnboardingTrack == 'personalized' ||
+            (storedOnboardingTrack == null && usePersonalizedByDefault)
+        ? OnboardingTrack.personalized
+        : OnboardingTrack.classic;
     _userName = _storage.getUserName();
     _profileImageBase64 = _storage.getProfileImageBase64();
     _moodRealityText = _storage.getMoodRealityText();
     _moodFavoriteSongUrl = _storage.getMoodFavoriteSongUrl();
     _hideMoodEntryPopup = _storage.getHideMoodEntryPopup();
+    _hiddenMoodEntryPopups = _storage.getHiddenMoodEntryPopups();
     _recentGwynJokes = _storage.getRecentGwynJokes();
     _healDisclaimerAccepted = _storage.getHealDisclaimerAccepted();
     _hideHealMethodsMessage = _storage.getHideHealMethodsMessage();
     _hideUnderstandMethodsMessage = _storage.getHideUnderstandMethodsMessage();
     _hideCopeMethodsMessage = _storage.getHideCopeMethodsMessage();
+    _planningHintSeen = _storage.getPlanningHintSeen();
+    _reminderSwipeHintSeen = _storage.getReminderSwipeHintSeen();
+    _progressSwipeHintSeen = _storage.getProgressSwipeHintSeen();
+    _copeDailyActivityDates = _storage.getCopeDailyActivityDates();
+    _copePlanName = _storage.getCopePlanName();
+    _copePlanNames = _storage.getCopePlanNames();
+    _understandPlanNames = _storage.getUnderstandPlanNames();
+    _healPlanNames = _storage.getHealPlanNames();
+    _hasCopePlan = _storage.getHasCopePlan();
+    if (!_hasCopePlan && _storage.hasStoredCopePlanName()) {
+      _hasCopePlan = true;
+      await _storage.setHasCopePlan(true);
+    }
+    if (_copePlanNames.isEmpty && _hasCopePlan) {
+      _copePlanNames = [_copePlanName];
+      await _storage.setCopePlanNames(_copePlanNames);
+    }
+    _activePlanId = _storage.getActivePlanId();
+    await _migrateLegacyDefaultPlanNames();
+    if (_hasCopePlan && _activePlanId.isEmpty) {
+      _activePlanId = _copePlanId(_copePlanName);
+      await _storage.setActivePlanId(_activePlanId);
+    } else if (_hasCopePlan &&
+        _activePlanId == copePlanId &&
+        _copePlanNames.isNotEmpty) {
+      _activePlanId = _copePlanId(_copePlanNames.first);
+      await _storage.setActivePlanId(_activePlanId);
+    }
     _storeSubscriptionActive = _storage.getStoreSubscriptionActive();
     _debugSubscriptionActive = _storage.getDebugSubscriptionActive();
     _drawingGuessFreeRequestUsed = _storage.getDrawingGuessFreeRequestUsed();
@@ -233,6 +327,7 @@ class AppState extends ChangeNotifier {
     await _storage.saveReflections(_reflections);
 
     _markActivityToday();
+    await ReviewPromptService.instance.recordPositiveMoment();
     notifyListeners();
   }
 
@@ -272,8 +367,14 @@ class AppState extends ChangeNotifier {
     }
 
     _sortDailyJournalEntries();
+    if (_dailyJournalEntries.length > maxDailyJournalEntries) {
+      _dailyJournalEntries = _dailyJournalEntries
+          .take(maxDailyJournalEntries)
+          .toList();
+    }
     await _storage.saveDailyJournalEntries(_dailyJournalEntries);
     await _markActivityToday();
+    await ReviewPromptService.instance.recordPositiveMoment();
     notifyListeners();
   }
 
@@ -319,6 +420,7 @@ class AppState extends ChangeNotifier {
     _breathingSessionsCompleted++;
     await _storage.incrementBreathingSessionsCount();
     _markActivityToday();
+    await ReviewPromptService.instance.recordPositiveMoment();
     notifyListeners();
   }
 
@@ -352,6 +454,18 @@ class AppState extends ChangeNotifier {
     _onboardingCompleted = true;
     await _storage.setOnboardingCompleted(true);
     notifyListeners();
+  }
+
+  Future<void> setOnboardingTrack(OnboardingTrack track) async {
+    if (_onboardingTrack == track) return;
+
+    _onboardingTrack = track;
+    await _storage.setOnboardingTrack(track.name);
+    notifyListeners();
+  }
+
+  Future<void> setPendingOnboardingPlan(String? planType) async {
+    await _storage.setPendingOnboardingPlan(planType?.toLowerCase());
   }
 
   Future<void> setUserName(String name) async {
@@ -388,6 +502,23 @@ class AppState extends ChangeNotifier {
 
     _hideMoodEntryPopup = hidden;
     await _storage.setHideMoodEntryPopup(hidden);
+    notifyListeners();
+  }
+
+  Future<void> setMoodEntryPopupHidden(int moodIndex, bool hidden) async {
+    if (moodIndex < 1 || moodIndex > 3) return;
+
+    final nextHiddenMoodEntryPopups = Set<int>.of(_hiddenMoodEntryPopups);
+    if (hidden) {
+      nextHiddenMoodEntryPopups.add(moodIndex);
+    } else {
+      nextHiddenMoodEntryPopups.remove(moodIndex);
+    }
+
+    if (setEquals(_hiddenMoodEntryPopups, nextHiddenMoodEntryPopups)) return;
+
+    _hiddenMoodEntryPopups = nextHiddenMoodEntryPopups;
+    await _storage.setHiddenMoodEntryPopups(_hiddenMoodEntryPopups);
     notifyListeners();
   }
 
@@ -451,6 +582,440 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> markPlanningHintSeen() async {
+    if (_planningHintSeen) return;
+
+    _planningHintSeen = true;
+    await _storage.setPlanningHintSeen(true);
+    notifyListeners();
+  }
+
+  Future<void> markReminderSwipeHintSeen() async {
+    if (_reminderSwipeHintSeen) return;
+
+    _reminderSwipeHintSeen = true;
+    await _storage.setReminderSwipeHintSeen(true);
+    notifyListeners();
+  }
+
+  Future<void> markProgressSwipeHintSeen() async {
+    if (_progressSwipeHintSeen) return;
+
+    _progressSwipeHintSeen = true;
+    await _storage.setProgressSwipeHintSeen(true);
+    notifyListeners();
+  }
+
+  bool isCopeActivityCompletedToday(String activity) {
+    return (_copeDailyActivityDates[activity] ?? const <String>[]).contains(
+      _dateKey(DateTime.now()),
+    );
+  }
+
+  Future<void> setCopeActivityCompletedToday(
+    String activity,
+    bool completed,
+  ) async {
+    final today = _dateKey(DateTime.now());
+    final dates = {...?_copeDailyActivityDates[activity]};
+    if (completed) {
+      dates.add(today);
+    } else {
+      dates.remove(today);
+    }
+
+    _copeDailyActivityDates = {
+      ..._copeDailyActivityDates,
+      activity: dates.toList()..sort(),
+    };
+    await _storage.setCopeDailyActivityDates(_copeDailyActivityDates);
+    notifyListeners();
+  }
+
+  int copeActivityStreak(String activity) {
+    final dates = (_copeDailyActivityDates[activity] ?? const <String>[])
+        .toSet();
+    if (dates.isEmpty) return 0;
+
+    var cursor = _dateOnly(DateTime.now());
+    if (!dates.contains(_dateKey(cursor))) {
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+
+    var streak = 0;
+    while (dates.contains(_dateKey(cursor))) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  Future<void> setCopePlanName(String name) async {
+    final trimmed = name.trim();
+    final nextName = trimmed.isEmpty ? 'Cope plan' : trimmed;
+    if (_copePlanName == nextName) return;
+
+    final previousName = _copePlanName;
+    final previousPlanId = _copePlanId(previousName);
+    final activeIndex = _copePlanNames.indexOf(_copePlanName);
+    if (activeIndex != -1) {
+      _copePlanNames[activeIndex] = nextName;
+    } else {
+      _copePlanNames = [..._copePlanNames, nextName];
+    }
+    if (_copePlanNames.isNotEmpty) {
+      await _storage.setCopePlanNames(_copePlanNames);
+    }
+
+    _copePlanName = nextName;
+    await _storage.setCopePlanName(nextName);
+    if (_activePlanId == previousPlanId) {
+      _activePlanId = _copePlanId(nextName);
+      await _storage.setActivePlanId(_activePlanId);
+    }
+    notifyListeners();
+  }
+
+  Future<void> saveCopePlan({String? name}) async {
+    final nextName = (name?.trim().isNotEmpty ?? false)
+        ? name!.trim()
+        : nextCopePlanName;
+    final alreadySaved = _copePlanNames.any(
+      (savedName) => savedName.toLowerCase() == nextName.toLowerCase(),
+    );
+
+    if (!alreadySaved) {
+      _copePlanNames = [..._copePlanNames, nextName];
+      await _storage.setCopePlanNames(_copePlanNames);
+    }
+
+    _hasCopePlan = true;
+    await _storage.setHasCopePlan(true);
+    _copePlanName = nextName;
+    await _storage.setCopePlanName(nextName);
+    _activePlanId = _copePlanId(nextName);
+    await _storage.setActivePlanId(_activePlanId);
+    await ReviewPromptService.instance.recordPositiveMoment();
+    notifyListeners();
+  }
+
+  Future<void> saveUnderstandPlan({String? name}) async {
+    final nextName = (name?.trim().isNotEmpty ?? false)
+        ? name!.trim()
+        : nextUnderstandPlanName;
+    final alreadySaved = _understandPlanNames.any(
+      (savedName) => savedName.toLowerCase() == nextName.toLowerCase(),
+    );
+
+    if (!alreadySaved) {
+      _understandPlanNames = [..._understandPlanNames, nextName];
+      await _storage.setUnderstandPlanNames(_understandPlanNames);
+    }
+
+    _activePlanId = understandPlanIdForName(nextName);
+    await _storage.setActivePlanId(_activePlanId);
+    await ReviewPromptService.instance.recordPositiveMoment();
+    notifyListeners();
+  }
+
+  Future<void> saveHealPlan({String? name}) async {
+    final nextName = (name?.trim().isNotEmpty ?? false)
+        ? name!.trim()
+        : nextHealPlanName;
+    final alreadySaved = _healPlanNames.any(
+      (savedName) => savedName.toLowerCase() == nextName.toLowerCase(),
+    );
+
+    if (!alreadySaved) {
+      _healPlanNames = [..._healPlanNames, nextName];
+      await _storage.setHealPlanNames(_healPlanNames);
+    }
+
+    _activePlanId = healPlanIdForName(nextName);
+    await _storage.setActivePlanId(_activePlanId);
+    await ReviewPromptService.instance.recordPositiveMoment();
+    notifyListeners();
+  }
+
+  Future<void> setActivePlan(String planId) async {
+    if (planId.trim().isEmpty || _activePlanId == planId) return;
+
+    _activePlanId = planId;
+    await _storage.setActivePlanId(planId);
+    String? activeName;
+    for (final name in _copePlanNames) {
+      if (_copePlanId(name) == planId) {
+        activeName = name;
+        break;
+      }
+    }
+    if (activeName != null) {
+      _copePlanName = activeName;
+      await _storage.setCopePlanName(activeName);
+    }
+    notifyListeners();
+  }
+
+  Future<void> deactivateActivePlan() async {
+    if (_activePlanId == 'none') return;
+
+    _activePlanId = 'none';
+    await _storage.setActivePlanId(_activePlanId);
+    notifyListeners();
+  }
+
+  Future<bool> renamePlan(String planId, String name) async {
+    final nextName = name.trim();
+    if (nextName.isEmpty) return false;
+
+    Future<bool> renameInList({
+      required List<String> names,
+      required String Function(String) idForName,
+      required Future<void> Function(List<String>) saveNames,
+      required void Function(List<String>) updateNames,
+      Future<void> Function(String previousName, String nextName)? afterRename,
+    }) async {
+      final index = names.indexWhere(
+        (savedName) => idForName(savedName) == planId,
+      );
+      if (index == -1) return false;
+
+      final duplicateIndex = names.indexWhere(
+        (savedName) => savedName.toLowerCase() == nextName.toLowerCase(),
+      );
+      if (duplicateIndex != -1 && duplicateIndex != index) return false;
+
+      final previousName = names[index];
+      final updatedNames = [...names]..[index] = nextName;
+      updateNames(updatedNames);
+      await saveNames(updatedNames);
+      if (afterRename != null) {
+        await afterRename(previousName, nextName);
+      }
+
+      if (_activePlanId == planId) {
+        _activePlanId = idForName(nextName);
+        await _storage.setActivePlanId(_activePlanId);
+      }
+      notifyListeners();
+      return true;
+    }
+
+    if (planId.startsWith('cope_plan:')) {
+      return renameInList(
+        names: _copePlanNames,
+        idForName: _copePlanId,
+        saveNames: _storage.setCopePlanNames,
+        updateNames: (names) => _copePlanNames = names,
+        afterRename: (previousName, nextName) async {
+          if (_copePlanName == previousName) {
+            _copePlanName = nextName;
+            await _storage.setCopePlanName(nextName);
+          }
+        },
+      );
+    }
+    if (planId.startsWith('understand_plan:')) {
+      return renameInList(
+        names: _understandPlanNames,
+        idForName: understandPlanIdForName,
+        saveNames: _storage.setUnderstandPlanNames,
+        updateNames: (names) => _understandPlanNames = names,
+      );
+    }
+    if (planId.startsWith('heal_plan:')) {
+      return renameInList(
+        names: _healPlanNames,
+        idForName: healPlanIdForName,
+        saveNames: _storage.setHealPlanNames,
+        updateNames: (names) => _healPlanNames = names,
+      );
+    }
+
+    return false;
+  }
+
+  Future<void> deletePlan(String planId) async {
+    var removed = false;
+
+    final copePlanName = _copePlanNames.cast<String?>().firstWhere(
+      (name) => name != null && _copePlanId(name) == planId,
+      orElse: () => null,
+    );
+    if (copePlanName != null) {
+      _copePlanNames = _copePlanNames
+          .where((name) => name != copePlanName)
+          .toList();
+      _hasCopePlan = _copePlanNames.isNotEmpty;
+      await _storage.setCopePlanNames(_copePlanNames);
+      await _storage.setHasCopePlan(_hasCopePlan);
+
+      if (_copePlanName == copePlanName) {
+        _copePlanName = _copePlanNames.isEmpty
+            ? 'Cope plan'
+            : _copePlanNames.first;
+        await _storage.setCopePlanName(_copePlanName);
+      }
+      removed = true;
+    }
+
+    if (!removed) {
+      final understandPlanName = _understandPlanNames
+          .cast<String?>()
+          .firstWhere(
+            (name) => name != null && understandPlanIdForName(name) == planId,
+            orElse: () => null,
+          );
+      if (understandPlanName != null) {
+        _understandPlanNames = _understandPlanNames
+            .where((name) => name != understandPlanName)
+            .toList();
+        await _storage.setUnderstandPlanNames(_understandPlanNames);
+        removed = true;
+      }
+    }
+
+    if (!removed) {
+      final healPlanName = _healPlanNames.cast<String?>().firstWhere(
+        (name) => name != null && healPlanIdForName(name) == planId,
+        orElse: () => null,
+      );
+      if (healPlanName != null) {
+        _healPlanNames = _healPlanNames
+            .where((name) => name != healPlanName)
+            .toList();
+        await _storage.setHealPlanNames(_healPlanNames);
+        removed = true;
+      }
+    }
+
+    if (!removed) return;
+
+    if (_activePlanId == planId) {
+      if (_copePlanNames.isNotEmpty) {
+        _activePlanId = _copePlanId(_copePlanNames.first);
+        _copePlanName = _copePlanNames.first;
+        await _storage.setCopePlanName(_copePlanName);
+      } else if (_understandPlanNames.isNotEmpty) {
+        _activePlanId = understandPlanIdForName(_understandPlanNames.first);
+      } else if (_healPlanNames.isNotEmpty) {
+        _activePlanId = healPlanIdForName(_healPlanNames.first);
+      } else {
+        _activePlanId = '';
+      }
+      await _storage.setActivePlanId(_activePlanId);
+    }
+
+    notifyListeners();
+  }
+
+  bool isPlanActive(String planName) {
+    return _activePlanId == _copePlanId(planName);
+  }
+
+  bool isUnderstandPlanActive(String planName) {
+    return _activePlanId == understandPlanIdForName(planName);
+  }
+
+  bool isHealPlanActive(String planName) {
+    return _activePlanId == healPlanIdForName(planName);
+  }
+
+  String copePlanIdForName(String planName) => _copePlanId(planName);
+
+  String understandPlanIdForName(String planName) {
+    return _typedPlanId('understand_plan', planName);
+  }
+
+  String healPlanIdForName(String planName) {
+    return _typedPlanId('heal_plan', planName);
+  }
+
+  String _copePlanId(String planName) {
+    return _typedPlanId('cope_plan', planName);
+  }
+
+  String _typedPlanId(String type, String planName) {
+    return '$type:${planName.trim().toLowerCase()}';
+  }
+
+  Future<void> _migrateLegacyDefaultPlanNames() async {
+    final activePlanReplacements = <String, String>{};
+
+    List<String> migrateNames(
+      List<String> names, {
+      required String aspect,
+      required String planType,
+    }) {
+      return names.map((name) {
+        final migrated = _migrateLegacyDefaultPlanName(name, aspect);
+        if (migrated != name) {
+          activePlanReplacements[_typedPlanId(planType, name)] = _typedPlanId(
+            planType,
+            migrated,
+          );
+        }
+        return migrated;
+      }).toList();
+    }
+
+    final migratedCopeNames = migrateNames(
+      _copePlanNames,
+      aspect: 'Cope',
+      planType: 'cope_plan',
+    );
+    final migratedUnderstandNames = migrateNames(
+      _understandPlanNames,
+      aspect: 'Understand',
+      planType: 'understand_plan',
+    );
+    final migratedHealNames = migrateNames(
+      _healPlanNames,
+      aspect: 'Heal',
+      planType: 'heal_plan',
+    );
+    final migratedCopePlanName = _migrateLegacyDefaultPlanName(
+      _copePlanName,
+      'Cope',
+    );
+
+    if (!listEquals(migratedCopeNames, _copePlanNames)) {
+      _copePlanNames = migratedCopeNames;
+      await _storage.setCopePlanNames(_copePlanNames);
+    }
+    if (!listEquals(migratedUnderstandNames, _understandPlanNames)) {
+      _understandPlanNames = migratedUnderstandNames;
+      await _storage.setUnderstandPlanNames(_understandPlanNames);
+    }
+    if (!listEquals(migratedHealNames, _healPlanNames)) {
+      _healPlanNames = migratedHealNames;
+      await _storage.setHealPlanNames(_healPlanNames);
+    }
+    if (migratedCopePlanName != _copePlanName) {
+      _copePlanName = migratedCopePlanName;
+      await _storage.setCopePlanName(_copePlanName);
+    }
+
+    final migratedActivePlanId = activePlanReplacements[_activePlanId];
+    if (migratedActivePlanId != null) {
+      _activePlanId = migratedActivePlanId;
+      await _storage.setActivePlanId(_activePlanId);
+    }
+  }
+
+  String _migrateLegacyDefaultPlanName(String name, String aspect) {
+    final normalized = name.trim().toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    final legacyCompact = '${aspect.toLowerCase()} plan1';
+    final legacySpaced = '${aspect.toLowerCase()} plan 1';
+    if (normalized == legacyCompact || normalized == legacySpaced) {
+      return '$aspect plan';
+    }
+    return name;
+  }
+
   Future<void> useDrawingGuessFreeRequest() async {
     if (_drawingGuessFreeRequestUsed) return;
 
@@ -472,6 +1037,7 @@ class AppState extends ChangeNotifier {
 
     _debugSubscriptionActive = true;
     await _storage.setDebugSubscriptionActive(true);
+    await _unlockPendingOnboardingPlan();
     notifyListeners();
   }
 
@@ -480,7 +1046,26 @@ class AppState extends ChangeNotifier {
 
     _storeSubscriptionActive = true;
     await _storage.setStoreSubscriptionActive(true);
+    await _unlockPendingOnboardingPlan();
     notifyListeners();
+  }
+
+  Future<void> _unlockPendingOnboardingPlan() async {
+    final planType = _storage.getPendingOnboardingPlan();
+    switch (planType) {
+      case 'cope':
+        await saveCopePlan();
+        break;
+      case 'understand':
+        await saveUnderstandPlan();
+        break;
+      case 'heal':
+        await saveHealPlan();
+        break;
+    }
+    if (planType != null) {
+      await _storage.setPendingOnboardingPlan(null);
+    }
   }
 
   Future<void> updateGroundingObject(int index, String object) async {

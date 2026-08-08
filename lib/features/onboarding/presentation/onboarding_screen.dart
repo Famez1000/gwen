@@ -61,19 +61,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _OnboardingPageData(
       title: 'Cope',
       description:
-          'Panic and anxiety attacks can feel like your mind is spiraling out of control. No matter how intense they become, the cope exercises help you break the cycle by distracting your mind',
+          'Panic and anxiety attacks can feel as though your mind is spiraling out of control. No matter how intense they become, the exercises in this app can help you break the cycle by redirecting your attention and calming your mind',
       icon: Icons.spa_rounded,
     ),
     _OnboardingPageData(
       title: 'Understand',
       description:
-          'Understand what is really happening in your mind. There is a reason you feel anxious. Once you understand the reason why, healing can begin. Explore your mind using Gwyn\'s effective tools',
+          'There is a reason you feel anxious. Understand what is really happening in your mind. Once you understand the reason why, healing can begin. Explore your mind using Gwyn\'s effective tools',
       icon: Icons.lightbulb_rounded,
     ),
     _OnboardingPageData(
       title: 'Heal',
       description:
-          'Healing anxiety takes courage. It means facing the fears that have been holding you back. This journey isn\'t easy, but Gwyn will stand by your side every step of the way. The courage to move forward, however, must come from within you',
+          'Healing anxiety takes courage. It means facing the fears that have been holding you back. This journey isn\'t easy, but Gwyn will stand by your side every step of the way',
       iconAsset: 'assets/images/resilient-health.png',
     ),
   ];
@@ -357,7 +357,7 @@ class _FeatureOnboardingPage extends StatelessWidget {
                       height: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 34),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -563,7 +563,7 @@ class _GwynBackgroundPage extends StatelessWidget {
             Positioned(
               left: 28,
               right: 28,
-              top: 250,
+              top: 224,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -583,6 +583,24 @@ class _GwynBackgroundPage extends StatelessWidget {
                     label: 'Heal',
                   ),
                 ],
+              ),
+            ),
+            const Positioned(
+              left: 28,
+              right: 28,
+              top: 436,
+              bottom: 0,
+              child: Center(
+                child: Text(
+                  'your anxiety',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                ),
               ),
             ),
           ],

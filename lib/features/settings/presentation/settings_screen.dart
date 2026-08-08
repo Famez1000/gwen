@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../onboarding/presentation/onboarding_screen.dart';
+import '../../onboarding/presentation/personalized_onboarding_screen.dart';
 import 'about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -120,6 +122,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _selectOnboardingTrack(OnboardingTrack track) async {
+    await widget.appState.setOnboardingTrack(track);
+    if (mounted) setState(() {});
+  }
+
+  void _previewSelectedOnboarding() {
+    final isPersonalized =
+        widget.appState.onboardingTrack == OnboardingTrack.personalized;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => isPersonalized
+            ? PersonalizedOnboardingScreen(
+                appState: widget.appState,
+                isPreview: true,
+                onAcceptTerms: () async {},
+                onComplete: () async {},
+              )
+            : OnboardingScreen(
+                onAcceptTerms: () async {},
+                onNameSubmitted: (_) async {},
+                onComplete: () async {
+                  if (mounted) Navigator.of(context).pop();
+                },
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -161,6 +192,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: 8),
                         _buildThemeButton(2, 'Dark', primaryColor),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Onboarding track',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Choose which onboarding new users see on this device.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildOnboardingTrackButton(
+                          OnboardingTrack.classic,
+                          'Classic',
+                          primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildOnboardingTrackButton(
+                          OnboardingTrack.personalized,
+                          'Personalized',
+                          primaryColor,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _previewSelectedOnboarding,
+                      icon: const Icon(Icons.visibility_rounded),
+                      label: const Text('Preview selected onboarding'),
                     ),
                   ],
                 ),
@@ -310,6 +386,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: isSelected
                   ? Colors.white
                   : (isDark ? Colors.white70 : Colors.black87),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOnboardingTrackButton(
+    OnboardingTrack track,
+    String label,
+    Color primary,
+  ) {
+    final isSelected = widget.appState.onboardingTrack == track;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _selectOnboardingTrack(track),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primary
+                : isDark
+                ? Colors.white.withAlpha(10)
+                : Colors.white.withAlpha(204),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isSelected ? primary : Colors.black12),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.white
+                  : isDark
+                  ? Colors.white70
+                  : Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
             ),
           ),
         ),

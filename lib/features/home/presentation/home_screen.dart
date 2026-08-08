@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/state/app_state.dart';
 import '../../profile/presentation/profile_screen.dart';
+import '../../profile/presentation/my_plans_screen.dart';
 import '../../progress/presentation/progress_screen.dart';
 import '../../reminders/presentation/reminders_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
-import '../../subscription/application/subscription_gate.dart';
 import 'mood_screen.dart';
+import 'planning_intro_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ValueChanged<int>? onBottomDestinationSelected;
@@ -18,6 +19,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> {
+  String _activePlanName(AppState appState) {
+    for (final planName in appState.copePlanNames) {
+      if (appState.isPlanActive(planName)) return planName;
+    }
+    for (final planName in appState.understandPlanNames) {
+      if (appState.isUnderstandPlanActive(planName)) return planName;
+    }
+    for (final planName in appState.healPlanNames) {
+      if (appState.isHealPlanActive(planName)) return planName;
+    }
+    return 'No plan selected';
+  }
+
   Future<void> _askForName(AppState appState) async {
     final name = await showDialog<String>(
       context: context,
@@ -56,6 +70,22 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openPlanning(AppState appState) async {
+    await appState.markPlanningHintSeen();
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => appState.hasCopePlan
+            ? MyPlansScreen(
+                onDestinationSelected: widget.onBottomDestinationSelected,
+              )
+            : const PlanningIntroScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
@@ -68,27 +98,50 @@ class HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 64),
-                GestureDetector(
-                  onTap: () {
-                    openGwynChatOrSubscription(
-                      context,
-                      previewBeforeSubscription: true,
-                      previewDialogMessage:
-                          'Here you can chat with Gwyn using AI. This preview uses built-in example responses so you can see how Gwyn replies before subscribing.',
-                    );
-                  },
-                  child: Image.asset(
-                    'assets/images/gwen_relaxed.png',
-                    width: 180,
-                    height: 180,
-                    fit: BoxFit.contain,
+                SizedBox(
+                  height: 180,
+                  width: double.infinity,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _openPlanning(appState),
+                        child: Image.asset(
+                          'assets/images/gwen_relaxed.png',
+                          width: 180,
+                          height: 180,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      if (!appState.planningHintSeen)
+                        Align(
+                          alignment: Alignment.center,
+                          child: Transform.translate(
+                            offset: const Offset(116, -36),
+                            child: const _PlanningHintBubble(),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: AnimatedGreeting(
                     userName: appState.userName,
+                    activePlanName: _activePlanName(appState),
                     onWeGotThisTap: () => _askForName(appState),
+                    onActivePlanTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MyPlansScreen(
+                            onDestinationSelected:
+                                widget.onBottomDestinationSelected,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 // Smiley icons extracted from assets/images/
@@ -128,8 +181,11 @@ class HomeScreenState extends State<HomeScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  ProgressScreen(appState: appState),
+                              builder: (context) => ProgressScreen(
+                                appState: appState,
+                                onDestinationSelected:
+                                    widget.onBottomDestinationSelected,
+                              ),
                             ),
                           );
                         },
@@ -172,7 +228,11 @@ class HomeScreenState extends State<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ProfileScreen(appState: appState),
+                      builder: (context) => ProfileScreen(
+                        appState: appState,
+                        onBottomDestinationSelected:
+                            widget.onBottomDestinationSelected,
+                      ),
                     ),
                   );
                 },
@@ -250,11 +310,69 @@ class _MoodChoice extends StatelessWidget {
   }
 }
 
+class _PlanningHintBubble extends StatelessWidget {
+  const _PlanningHintBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -5,
+          top: 26,
+          child: Transform.rotate(
+            angle: 0.78,
+            child: Container(width: 12, height: 12, color: primaryColor),
+          ),
+        ),
+        Container(
+          width: 118,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: primaryColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(20),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Text(
+            'Tap me to start planning',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class AnimatedGreeting extends StatefulWidget {
   final String userName;
+  final String activePlanName;
+  final bool showActivePlan;
   final VoidCallback? onWeGotThisTap;
+  final VoidCallback? onActivePlanTap;
 
-  const AnimatedGreeting({super.key, this.userName = '', this.onWeGotThisTap});
+  const AnimatedGreeting({
+    super.key,
+    this.userName = '',
+    this.activePlanName = 'No plan selected',
+    this.showActivePlan = false,
+    this.onWeGotThisTap,
+    this.onActivePlanTap,
+  });
 
   @override
   State<AnimatedGreeting> createState() => _AnimatedGreetingState();
@@ -264,7 +382,7 @@ class _AnimatedGreetingState extends State<AnimatedGreeting> {
   int _currentIndex = 0;
 
   List<String> get _lines {
-    return ['Gwyn here', "How's it going?"];
+    return ['Gwyn here', "\nHow's it going?"];
   }
 
   String get _weGotThisLine {
@@ -300,7 +418,10 @@ class _AnimatedGreetingState extends State<AnimatedGreeting> {
           opacity: _currentIndex >= index ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 500),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            padding: EdgeInsets.only(
+              top: index == 0 ? 24 : 16,
+              bottom: index == 0 ? 0 : 24,
+            ),
             child: index == 0
                 ? Column(
                     children: [
@@ -325,17 +446,40 @@ class _AnimatedGreetingState extends State<AnimatedGreeting> {
                           ),
                         ),
                       ),
+                      if (widget.showActivePlan) ...[
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.onActivePlanTap,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            child: Text(
+                              'Active plan:  ${widget.activePlanName}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white60
+                                    : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   )
-                : Padding(
-                    padding: const EdgeInsets.only(top: 15),
-                    child: Text(
-                      _lines[index],
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
+                : Text(
+                    _lines[index],
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
           ),

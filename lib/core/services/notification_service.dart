@@ -30,6 +30,8 @@ class NotificationService {
   static const String _channelDescription =
       'Daily reminders to pause, breathe, and check in.';
   static const String _reminderSchedulesKey = 'daily_reminder_schedules';
+  static const String _planReminderSchedulesKeyPrefix =
+      'plan_reminder_schedules';
   static const String _dailyGwynReminderMigrationKey =
       'daily_gwyn_reminder_migrated';
   static const String _dailyGwynReminderAssetPath =
@@ -117,6 +119,48 @@ class NotificationService {
       notificationDetails: _notificationDetails(),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  Future<void> schedulePlanReminder(
+    DailyReminderSchedule reminder, {
+    required int position,
+  }) async {
+    await init();
+    await requestPermissions();
+
+    final frequency = reminder.frequency.trim().toLowerCase();
+    final (scheduledDate, matchComponents) = switch (frequency) {
+      'several times a week' => (
+        _nextWeeklyInstance(
+          reminder.hour,
+          reminder.minute,
+          const [
+            DateTime.monday,
+            DateTime.wednesday,
+            DateTime.friday,
+          ][position % 3],
+        ),
+        DateTimeComponents.dayOfWeekAndTime,
+      ),
+      'occasionally' => (
+        _nextWeeklyInstance(reminder.hour, reminder.minute, DateTime.monday),
+        DateTimeComponents.dayOfWeekAndTime,
+      ),
+      _ => (
+        _nextDailyInstance(reminder.hour, reminder.minute),
+        DateTimeComponents.time,
+      ),
+    };
+
+    await _plugin.zonedSchedule(
+      id: reminder.id,
+      title: reminder.title,
+      body: reminder.body,
+      scheduledDate: scheduledDate,
+      notificationDetails: _notificationDetails(),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: matchComponents,
     );
   }
 
@@ -223,6 +267,149 @@ class NotificationService {
     );
   }
 
+  List<DailyReminderSchedule> defaultPlanReminderSchedules(String planType) {
+    final normalizedType = planType.trim().toLowerCase();
+    final baseId = switch (normalizedType) {
+      'cope' => 2100,
+      'understand' => 2200,
+      'heal' => 2300,
+      _ => 2400,
+    };
+    final planLabel = switch (normalizedType) {
+      'cope' => 'Cope',
+      'understand' => 'Understand',
+      'heal' => 'Heal',
+      _ => 'Daily',
+    };
+
+    return [
+      DailyReminderSchedule(
+        id: baseId + 1,
+        title: '$planLabel plan: Morning',
+        body: 'Start your morning activity in the $planLabel plan.',
+        hour: 9,
+        minute: 0,
+        isEnabled: true,
+      ),
+      DailyReminderSchedule(
+        id: baseId + 2,
+        title: '$planLabel plan: Noon',
+        body: 'Take a moment for your noon $planLabel activity.',
+        hour: 12,
+        minute: 0,
+        isEnabled: true,
+      ),
+      DailyReminderSchedule(
+        id: baseId + 3,
+        title: '$planLabel plan: Evening',
+        body: 'Complete your evening activity in the $planLabel plan.',
+        hour: 19,
+        minute: 0,
+        isEnabled: true,
+      ),
+    ];
+  }
+
+  List<DailyReminderSchedule> copePlanReminderSchedules({
+    required String frequency,
+    required List<String> feelings,
+    required String trigger,
+    String additionalInfo = '',
+  }) {
+    final normalizedFrequency = frequency.trim().isEmpty
+        ? 'Daily'
+        : frequency.trim();
+    final normalizedFeelings = feelings
+        .map((feeling) => feeling.trim())
+        .where((feeling) => feeling.isNotEmpty)
+        .toList();
+    final feelingsText = normalizedFeelings.isEmpty
+        ? 'Notice what you feel when anxiety appears.'
+        : 'When anxiety appears, you may feel ${normalizedFeelings.join(', ')}.';
+    final normalizedTrigger = trigger.trim().isEmpty
+        ? 'your usual trigger'
+        : trigger.trim();
+    final normalizedAdditionalInfo = additionalInfo.trim();
+    final combinedText = [
+      feelingsText,
+      'Your trigger is $normalizedTrigger.',
+      if (normalizedAdditionalInfo.isNotEmpty) normalizedAdditionalInfo,
+    ].join(' ');
+    final times = switch (normalizedFrequency.toLowerCase()) {
+      'multiple times every day' || 'multiple times a day' => const [
+        (8, 0),
+        (10, 0),
+        (12, 0),
+        (14, 0),
+        (17, 0),
+        (20, 0),
+      ],
+      'daily' => const [(9, 0), (14, 0), (19, 0)],
+      'several times a week' => const [(9, 0), (9, 0), (9, 0)],
+      _ => const [(9, 0)],
+    };
+
+    return times.indexed
+        .map(
+          (entry) => DailyReminderSchedule(
+            id: 2101 + entry.$1,
+            title: 'Cope reminder',
+            body: combinedText,
+            hour: entry.$2.$1,
+            minute: entry.$2.$2,
+            isEnabled: true,
+            frequency: normalizedFrequency,
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<DailyReminderSchedule>> loadPlanReminderSchedules(
+    String planType,
+  ) async {
+    final normalizedType = planType.trim().toLowerCase();
+    final prefs = await SharedPreferences.getInstance();
+    final key = '${_planReminderSchedulesKeyPrefix}_$normalizedType';
+    final jsonText = prefs.getString(key);
+    if (jsonText == null) {
+      final defaults = defaultPlanReminderSchedules(normalizedType);
+      await savePlanReminderSchedules(normalizedType, defaults);
+      return defaults;
+    }
+
+    try {
+      final decoded = jsonDecode(jsonText) as List<dynamic>;
+      final schedules = decoded
+          .map(
+            (item) =>
+                DailyReminderSchedule.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+      if (normalizedType == 'cope' && schedules.isNotEmpty) {
+        return schedules;
+      }
+      return schedules.length == 3
+          ? schedules
+          : defaultPlanReminderSchedules(normalizedType);
+    } catch (error) {
+      debugPrint('Plan reminder schedule fallback to defaults: $error');
+      return defaultPlanReminderSchedules(normalizedType);
+    }
+  }
+
+  Future<void> savePlanReminderSchedules(
+    String planType,
+    List<DailyReminderSchedule> reminders,
+  ) async {
+    final normalizedType = planType.trim().toLowerCase();
+    final prefs = await SharedPreferences.getInstance();
+    final key = '${_planReminderSchedulesKeyPrefix}_$normalizedType';
+    await prefs.setString(
+      key,
+      jsonEncode(reminders.map((reminder) => reminder.toJson()).toList()),
+    );
+  }
+
   Future<void> cancelReminder(int id) async {
     await init();
     await _plugin.cancel(id: id);
@@ -268,6 +455,23 @@ class NotificationService {
     return scheduledDate;
   }
 
+  tz.TZDateTime _nextWeeklyInstance(int hour, int minute, int weekday) {
+    final now = tz.TZDateTime.now(tz.local);
+    final daysAhead = (weekday - now.weekday) % 7;
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day + daysAhead,
+      hour,
+      minute,
+    );
+    if (!scheduledDate.isAfter(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 7));
+    }
+    return scheduledDate;
+  }
+
   NotificationDetails _notificationDetails() {
     const androidDetails = AndroidNotificationDetails(
       _channelId,
@@ -295,6 +499,7 @@ class DailyReminderSchedule {
   final int hour;
   final int minute;
   final bool isEnabled;
+  final String frequency;
 
   const DailyReminderSchedule({
     required this.id,
@@ -303,6 +508,7 @@ class DailyReminderSchedule {
     required this.hour,
     required this.minute,
     this.isEnabled = false,
+    this.frequency = 'Daily',
   });
 
   factory DailyReminderSchedule.fromJson(Map<String, dynamic> json) {
@@ -313,6 +519,7 @@ class DailyReminderSchedule {
       hour: json['hour'] as int? ?? 9,
       minute: json['minute'] as int? ?? 0,
       isEnabled: json['isEnabled'] as bool? ?? false,
+      frequency: json['frequency'] as String? ?? 'Daily',
     );
   }
 
@@ -324,6 +531,7 @@ class DailyReminderSchedule {
       'hour': hour,
       'minute': minute,
       'isEnabled': isEnabled,
+      'frequency': frequency,
     };
   }
 }

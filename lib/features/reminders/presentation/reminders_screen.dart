@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/services/notification_service.dart';
+import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 
 class RemindersScreen extends StatefulWidget {
@@ -10,13 +13,8 @@ class RemindersScreen extends StatefulWidget {
 }
 
 class _RemindersScreenState extends State<RemindersScreen> {
-  final TextEditingController _customReminderController =
-      TextEditingController();
-
-  final List<_ReminderItem> _reminders = NotificationService
-      .defaultDailyReminders
-      .map(_ReminderItem.fromSchedule)
-      .toList();
+  final Map<String, List<_ReminderItem>> _remindersByAspect = {};
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -24,56 +22,115 @@ class _RemindersScreenState extends State<RemindersScreen> {
     _loadReminderSchedules();
   }
 
-  @override
-  void dispose() {
-    _customReminderController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadReminderSchedules() async {
-    final schedules = await NotificationService.instance
-        .loadDailyReminderSchedules();
+    final results = await Future.wait([
+      NotificationService.instance.loadPlanReminderSchedules('cope'),
+      NotificationService.instance.loadPlanReminderSchedules('understand'),
+      NotificationService.instance.loadPlanReminderSchedules('heal'),
+    ]);
     if (!mounted) return;
 
     setState(() {
-      _reminders
+      _remindersByAspect
         ..clear()
-        ..addAll(schedules.map(_ReminderItem.fromSchedule));
+        ..['cope'] = results[0]
+            .map(
+              (schedule) => _ReminderItem.fromSchedule(
+                schedule,
+                color: Theme.of(context).primaryColor,
+                icon: Icons.spa_rounded,
+              ),
+            )
+            .toList()
+        ..['understand'] = results[1]
+            .map(
+              (schedule) => _ReminderItem.fromSchedule(
+                schedule,
+                color: Colors.amber.shade700,
+                icon: Icons.lightbulb_outline_rounded,
+              ),
+            )
+            .toList()
+        ..['heal'] = results[2]
+            .map(
+              (schedule) => _ReminderItem.fromSchedule(
+                schedule,
+                color: Colors.teal.shade500,
+                icon: Icons.healing_rounded,
+                imageAsset: 'assets/images/resilient-health.png',
+              ),
+            )
+            .toList();
     });
 
-    await _scheduleEnabledReminders();
+    await _syncAndScheduleReminders();
+    if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _scheduleEnabledReminders() async {
-    for (final reminder in _reminders.where((reminder) => reminder.isEnabled)) {
-      await NotificationService.instance.scheduleDailyReminder(
-        id: reminder.id,
-        title: reminder.title,
-        body: reminder.description,
-        hour: reminder.hour,
-        minute: reminder.minute,
-      );
+  bool _isAspectActive(AppState appState, String aspect) {
+    return switch (aspect) {
+      'cope' => appState.copePlanNames.any(appState.isPlanActive),
+      'understand' => appState.understandPlanNames.any(
+        appState.isUnderstandPlanActive,
+      ),
+      'heal' => appState.healPlanNames.any(appState.isHealPlanActive),
+      _ => false,
+    };
+  }
+
+  Future<void> _syncAndScheduleReminders() async {
+    final appState = context.read<AppState>();
+
+    for (final aspectEntry in _remindersByAspect.entries) {
+      final reminders = aspectEntry.value;
+      if (!_isAspectActive(appState, aspectEntry.key)) {
+        var changed = false;
+        for (final reminder in reminders) {
+          if (!reminder.isEnabled) continue;
+          reminder.isEnabled = false;
+          changed = true;
+          await NotificationService.instance.cancelReminder(reminder.id);
+        }
+        if (changed) await _saveReminderSchedules(aspectEntry.key);
+        continue;
+      }
+
+      for (final entry in reminders.indexed.where(
+        (entry) => entry.$2.isEnabled,
+      )) {
+        await NotificationService.instance.schedulePlanReminder(
+          entry.$2.toSchedule(),
+          position: entry.$1,
+        );
+      }
     }
   }
 
-  Future<void> _saveReminderSchedules() async {
-    await NotificationService.instance.saveDailyReminderSchedules(
-      _reminders.map((reminder) => reminder.toSchedule()).toList(),
+  Future<void> _saveReminderSchedules(String aspect) async {
+    final reminders = _remindersByAspect[aspect] ?? const <_ReminderItem>[];
+    await NotificationService.instance.savePlanReminderSchedules(
+      aspect,
+      reminders.map((reminder) => reminder.toSchedule()).toList(),
     );
   }
 
-  Future<void> _toggleReminder(int index, bool value) async {
-    final reminder = _reminders[index];
-    setState(() => _reminders[index].isEnabled = value);
-    await _saveReminderSchedules();
+  Future<void> _toggleReminder(String aspect, int index, bool value) async {
+    final reminders = _remindersByAspect[aspect];
+    if (reminders == null || index >= reminders.length) return;
+
+    if (value && !_isAspectActive(context.read<AppState>(), aspect)) {
+      await _showInactivePlanDialog(aspect);
+      return;
+    }
+
+    final reminder = reminders[index];
+    setState(() => reminder.isEnabled = value);
+    await _saveReminderSchedules(aspect);
 
     if (value) {
-      await NotificationService.instance.scheduleDailyReminder(
-        id: reminder.id,
-        title: reminder.title,
-        body: reminder.description,
-        hour: reminder.hour,
-        minute: reminder.minute,
+      await NotificationService.instance.schedulePlanReminder(
+        reminder.toSchedule(),
+        position: index,
       );
     } else {
       await NotificationService.instance.cancelReminder(reminder.id);
@@ -83,61 +140,77 @@ class _RemindersScreenState extends State<RemindersScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          value ? 'Daily reminder scheduled' : 'Reminder cancelled',
+          value
+              ? '${reminder.frequency} reminder scheduled'
+              : 'Reminder cancelled',
         ),
       ),
     );
   }
 
-  Future<void> _addCustomReminder() async {
-    final text = _customReminderController.text.trim();
-    if (text.isEmpty) return;
+  Future<void> _showInactivePlanDialog(String aspect) async {
+    final planName = switch (aspect) {
+      'cope' => 'Cope',
+      'understand' => 'Understand',
+      'heal' => 'Heal',
+      _ => 'This',
+    };
 
-    setState(() {
-      _reminders.add(
-        _ReminderItem(
-          id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
-          title: text,
-          time: '9:00 AM',
-          hour: 9,
-          minute: 0,
-          description: 'A personal reminder you can keep visible here.',
-          icon: Icons.notifications_active_rounded,
-          color: Theme.of(context).primaryColor,
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Plan not active'),
+        content: Text(
+          'This reminder cannot be enabled because the $planName plan is not active. Make that plan active first.',
         ),
-      );
-      _customReminderController.clear();
-    });
-    await _saveReminderSchedules();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Reminder added')));
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _editReminder(int index) async {
-    final reminder = _reminders[index];
+  Future<void> _toggleAspectActivation(String aspect) async {
+    final appState = context.read<AppState>();
+    if (_isAspectActive(appState, aspect)) {
+      await appState.deactivateActivePlan();
+    } else {
+      final planId = switch (aspect) {
+        'cope' when appState.copePlanNames.isNotEmpty =>
+          appState.copePlanIdForName(appState.copePlanNames.first),
+        'understand' when appState.understandPlanNames.isNotEmpty =>
+          appState.understandPlanIdForName(appState.understandPlanNames.first),
+        'heal' when appState.healPlanNames.isNotEmpty =>
+          appState.healPlanIdForName(appState.healPlanNames.first),
+        _ => null,
+      };
+      if (planId == null) return;
+      await appState.setActivePlan(planId);
+    }
+
+    await _syncAndScheduleReminders();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _editReminder(String aspect, int index) async {
+    if (!_isAspectActive(context.read<AppState>(), aspect)) {
+      await _showInactivePlanDialog(aspect);
+      return;
+    }
+
+    final reminders = _remindersByAspect[aspect];
+    if (reminders == null || index >= reminders.length) return;
+    final reminder = reminders[index];
     final updated = await showDialog<_ReminderEditResult>(
       context: context,
-      builder: (_) => _EditReminderDialog(reminder: reminder),
+      builder: (_) =>
+          _EditReminderDialog(reminder: reminder, allowDelete: false),
     );
 
     if (updated == null || !mounted) return;
-
-    if (updated.shouldDelete) {
-      await NotificationService.instance.cancelReminder(reminder.id);
-      if (!mounted) return;
-
-      setState(() => _reminders.removeAt(index));
-      await _saveReminderSchedules();
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Reminder removed')));
-      return;
-    }
 
     setState(() {
       reminder.title = updated.title;
@@ -146,15 +219,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
       reminder.minute = updated.time.minute;
       reminder.time = _formatReminderTime(updated.time);
     });
-    await _saveReminderSchedules();
+    await _saveReminderSchedules(aspect);
 
     if (reminder.isEnabled) {
-      await NotificationService.instance.scheduleDailyReminder(
-        id: reminder.id,
-        title: reminder.title,
-        body: reminder.description,
-        hour: reminder.hour,
-        minute: reminder.minute,
+      await NotificationService.instance.schedulePlanReminder(
+        reminder.toSchedule(),
+        position: index,
       );
     }
 
@@ -174,6 +244,28 @@ class _RemindersScreenState extends State<RemindersScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appState = context.watch<AppState>();
+    final activeColor = Theme.of(context).primaryColor;
+    final aspects = [
+      _ReminderAspect(
+        keyName: 'cope',
+        title: 'Cope',
+        subtitle: 'Reminders that help you steady yourself',
+        color: Theme.of(context).primaryColor,
+      ),
+      _ReminderAspect(
+        keyName: 'understand',
+        title: 'Understand',
+        subtitle: 'Reminders that help you notice your patterns',
+        color: Colors.amber.shade700,
+      ),
+      _ReminderAspect(
+        keyName: 'heal',
+        title: 'Heal',
+        subtitle: 'Reminders that support your healing practice',
+        color: Colors.teal.shade500,
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -189,49 +281,39 @@ class _RemindersScreenState extends State<RemindersScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           children: [
-            GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _customReminderController,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) {
-                        _addCustomReminder();
-                      },
-                      decoration: const InputDecoration(
-                        hintText: 'Add your own reminder...',
-                        border: InputBorder.none,
-                      ),
-                    ),
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              ...aspects.indexed.expand((entry) {
+                final aspect = entry.$2;
+                final reminders =
+                    _remindersByAspect[aspect.keyName] ??
+                    const <_ReminderItem>[];
+                final isActive = _isAspectActive(appState, aspect.keyName);
+                return [
+                  _ReminderAspectSection(
+                    aspect: aspect,
+                    reminders: reminders,
+                    isDark: isDark,
+                    isActive: isActive,
+                    activeColor: activeColor,
+                    onActivationTap: () =>
+                        _toggleAspectActivation(aspect.keyName),
+                    showSwipeHint: !appState.reminderSwipeHintSeen,
+                    onSwiped: appState.markReminderSwipeHintSeen,
+                    onEdit: (index) => _editReminder(aspect.keyName, index),
+                    onChanged: (index, value) =>
+                        _toggleReminder(aspect.keyName, index, value),
                   ),
-                  IconButton(
-                    tooltip: 'Add reminder',
-                    onPressed: () {
-                      _addCustomReminder();
-                    },
-                    icon: const Icon(Icons.add_circle_rounded),
-                  ),
-                ],
-              ),
-            ),
+                  if (entry.$1 < aspects.length - 1) const SizedBox(height: 26),
+                ];
+              }),
             const SizedBox(height: 20),
-            ...List.generate(_reminders.length, (index) {
-              final reminder = _reminders[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _ReminderCard(
-                  reminder: reminder,
-                  isDark: isDark,
-                  onTap: () => _editReminder(index),
-                  onChanged: (value) => _toggleReminder(index, value),
-                ),
-              );
-            }),
-            const SizedBox(height: 8),
             Text(
-              'Enabled reminders will send a local notification at the listed time each day.',
+              'Tap a reminder to edit its text or time. Use the switch to enable or disable its notification.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -246,10 +328,143 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 }
 
+class _ReminderAspect {
+  final String keyName;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  const _ReminderAspect({
+    required this.keyName,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
+}
+
+class _ReminderAspectSection extends StatelessWidget {
+  final _ReminderAspect aspect;
+  final List<_ReminderItem> reminders;
+  final bool isDark;
+  final bool isActive;
+  final Color activeColor;
+  final VoidCallback onActivationTap;
+  final bool showSwipeHint;
+  final VoidCallback onSwiped;
+  final ValueChanged<int> onEdit;
+  final void Function(int index, bool value) onChanged;
+
+  const _ReminderAspectSection({
+    required this.aspect,
+    required this.reminders,
+    required this.isDark,
+    required this.isActive,
+    required this.activeColor,
+    required this.onActivationTap,
+    required this.showSwipeHint,
+    required this.onSwiped,
+    required this.onEdit,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    aspect.title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    aspect.subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: onActivationTap,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? activeColor.withAlpha(isDark ? 70 : 30)
+                      : Colors.grey.withAlpha(isDark ? 60 : 32),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  isActive ? 'activated' : 'deactivated',
+                  style: TextStyle(
+                    color: isActive ? activeColor : Colors.grey.shade600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            if (showSwipeHint)
+              Icon(
+                Icons.swipe_rounded,
+                size: 19,
+                color: aspect.color.withAlpha(180),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        NotificationListener<ScrollUpdateNotification>(
+          onNotification: (notification) {
+            if (showSwipeHint && notification.scrollDelta != 0) {
+              onSwiped();
+            }
+            return false;
+          },
+          child: SizedBox(
+            height: 210,
+            child: ListView.separated(
+              key: ValueKey('${aspect.keyName}-reminders-scroll'),
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: reminders.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => SizedBox(
+                width: 270,
+                child: _ReminderCard(
+                  reminder: reminders[index],
+                  isDark: isDark,
+                  isActive: isActive,
+                  activeColor: activeColor,
+                  onTap: () => onEdit(index),
+                  onChanged: (value) => onChanged(index, value),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _EditReminderDialog extends StatefulWidget {
   final _ReminderItem reminder;
+  final bool allowDelete;
 
-  const _EditReminderDialog({required this.reminder});
+  const _EditReminderDialog({required this.reminder, this.allowDelete = true});
 
   @override
   State<_EditReminderDialog> createState() => _EditReminderDialogState();
@@ -386,12 +601,14 @@ class _EditReminderDialogState extends State<_EditReminderDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _delete,
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
-          child: const Text('Delete'),
-        ),
-        const Spacer(),
+        if (widget.allowDelete) ...[
+          TextButton(
+            onPressed: _delete,
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+          const Spacer(),
+        ],
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
@@ -405,12 +622,16 @@ class _EditReminderDialogState extends State<_EditReminderDialog> {
 class _ReminderCard extends StatelessWidget {
   final _ReminderItem reminder;
   final bool isDark;
+  final bool isActive;
+  final Color activeColor;
   final VoidCallback onTap;
   final ValueChanged<bool> onChanged;
 
   const _ReminderCard({
     required this.reminder,
     required this.isDark,
+    required this.isActive,
+    required this.activeColor,
     required this.onTap,
     required this.onChanged,
   });
@@ -420,60 +641,92 @@ class _ReminderCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: GlassCard(
-        padding: const EdgeInsets.all(18),
-        child: Row(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(16),
+        color: isActive
+            ? activeColor.withAlpha(isDark ? 90 : 55)
+            : Colors.grey.withAlpha(isDark ? 55 : 35),
+        border: Border.all(
+          color: isActive
+              ? activeColor.withAlpha(isDark ? 150 : 105)
+              : Colors.grey.withAlpha(isDark ? 100 : 75),
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: reminder.color.withAlpha(42),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(reminder.icon, color: reminder.color, size: 26),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          reminder.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        reminder.time,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: reminder.color,
-                        ),
-                      ),
-                    ],
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: reminder.color.withAlpha(42),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    reminder.description,
+                  child: reminder.imageAsset == null
+                      ? Icon(reminder.icon, color: reminder.color, size: 21)
+                      : ImageIcon(
+                          AssetImage(reminder.imageAsset!),
+                          color: reminder.color,
+                          size: 21,
+                        ),
+                ),
+                const Spacer(),
+                Switch(
+                  value: reminder.isEnabled,
+                  onChanged: onChanged,
+                  activeTrackColor: reminder.color.withAlpha(150),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              reminder.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: Text(
+                reminder.description,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: isDark ? Colors.white60 : Colors.black.withAlpha(153),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.schedule_rounded, size: 15, color: reminder.color),
+                const SizedBox(width: 5),
+                Text(
+                  reminder.time,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: reminder.color,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    reminder.frequency,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
                     style: TextStyle(
-                      fontSize: 13,
-                      height: 1.4,
-                      color: isDark
-                          ? Colors.white60
-                          : Colors.black.withAlpha(153),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white54 : Colors.black54,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Switch(value: reminder.isEnabled, onChanged: onChanged),
           ],
         ),
       ),
@@ -488,7 +741,9 @@ class _ReminderItem {
   int hour;
   int minute;
   String description;
+  String frequency;
   final IconData icon;
+  final String? imageAsset;
   final Color color;
   bool isEnabled;
 
@@ -500,11 +755,18 @@ class _ReminderItem {
     required this.minute,
     required this.description,
     required this.icon,
+    this.imageAsset,
     required this.color,
+    this.frequency = 'Daily',
     this.isEnabled = false,
   });
 
-  factory _ReminderItem.fromSchedule(DailyReminderSchedule schedule) {
+  factory _ReminderItem.fromSchedule(
+    DailyReminderSchedule schedule, {
+    Color? color,
+    IconData? icon,
+    String? imageAsset,
+  }) {
     return _ReminderItem(
       id: schedule.id,
       title: schedule.title,
@@ -512,18 +774,24 @@ class _ReminderItem {
       hour: schedule.hour,
       minute: schedule.minute,
       description: schedule.body,
-      icon: switch (schedule.id) {
-        1001 => Icons.wb_sunny_rounded,
-        1002 => Icons.air_rounded,
-        1003 => Icons.nights_stay_rounded,
-        _ => Icons.notifications_active_rounded,
-      },
-      color: switch (schedule.id) {
-        1001 => const Color(0xFFE7C9A9),
-        1002 => const Color(0xFF7FC8B2),
-        1003 => const Color(0xFF8B85A8),
-        _ => const Color(0xFF7FC8B2),
-      },
+      frequency: schedule.frequency,
+      icon:
+          icon ??
+          switch (schedule.id) {
+            1001 => Icons.wb_sunny_rounded,
+            1002 => Icons.air_rounded,
+            1003 => Icons.wb_twilight_rounded,
+            _ => Icons.notifications_active_rounded,
+          },
+      imageAsset: imageAsset,
+      color:
+          color ??
+          switch (schedule.id) {
+            1001 => const Color(0xFFE7C9A9),
+            1002 => const Color(0xFF7FC8B2),
+            1003 => const Color(0xFF8B85A8),
+            _ => const Color(0xFF7FC8B2),
+          },
       isEnabled: schedule.isEnabled,
     );
   }
@@ -536,6 +804,7 @@ class _ReminderItem {
       hour: hour,
       minute: minute,
       isEnabled: isEnabled,
+      frequency: frequency,
     );
   }
 

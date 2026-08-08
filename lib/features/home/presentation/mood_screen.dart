@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../../core/state/app_state.dart';
+import '../../affirmations/presentation/affirmations_screen.dart';
 import '../../breathing/presentation/breathing_screen.dart';
-import '../../drawing_guess/presentation/drawing_guess_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
-import '../../sanctuary/presentation/leaf_exercise_screen.dart';
 import '../../meditations/presentation/meditations_screen.dart';
+import '../../sanctuary/presentation/leaf_exercise_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
 
 class PanicMoodScreen extends StatelessWidget {
@@ -94,7 +94,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
       case 2:
         return 'Feeling anxious all the time is exhausting and can wear you down. Calm your mind by gently redirecting your attention with effective exercises, relaxing music, and guided meditation';
       case 3:
-        return 'In those moments when you\'re not trapped in crippling survival mode, so your anxiety has eased, work on healing. First, understand your anxiety. Then, gradually vanquish it, one step at a time';
+        return 'In those moments when you\'re not trapped in crippling survival mode, and your anxiety has eased, you can try to work on healing. First, understand your anxiety. Then, gradually vanquish it, one step at a time';
       default:
         return '';
     }
@@ -145,7 +145,9 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
       text: _trimTrailingWhitespace(_appState.moodRealityText),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _moodPopupText.isEmpty || _appState.hideMoodEntryPopup) {
+      if (!mounted ||
+          _moodPopupText.isEmpty ||
+          _appState.isMoodEntryPopupHidden(widget.emoticonIndex)) {
         return;
       }
       _showMoodEntryPopup(context, _moodPopupText);
@@ -169,6 +171,16 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
       if (!mounted) return;
       _appState.setMoodRealityText(_trimTrailingWhitespace(text));
     });
+  }
+
+  void _finishEditingRealityText() {
+    _saveDebounce?.cancel();
+    FocusManager.instance.primaryFocus?.unfocus();
+    unawaited(
+      _appState.setMoodRealityText(
+        _trimTrailingWhitespace(_realityTextController.text),
+      ),
+    );
   }
 
   String _trimTrailingWhitespace(String text) {
@@ -214,6 +226,23 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                     ),
                   ),
                 ),
+                if (_moodPopupText.isNotEmpty)
+                  IconButton(
+                    tooltip: 'About this mood',
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    icon: Icon(
+                      Icons.help_outline_rounded,
+                      size: 20,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                    onPressed: () =>
+                        _showMoodEntryPopup(context, _moodPopupText),
+                  ),
               ],
             ),
             const SizedBox(height: 2),
@@ -309,6 +338,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
               return TextField(
                 controller: _realityTextController,
                 onChanged: _saveRealityText,
+                onTapOutside: (_) => _finishEditingRealityText(),
                 minLines: textLines,
                 maxLines: textLines,
                 keyboardType: TextInputType.multiline,
@@ -369,10 +399,9 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
           ),
           actions: [
             _ExerciseIconButton(
-              icon: Icons.draw_rounded,
-              imageAsset: 'assets/images/gwyn-draw.png',
-              label: 'Draw & Guess',
-              onTap: () => _openExercise(const DrawingGuessScreen()),
+              icon: Icons.record_voice_over_rounded,
+              label: 'Affirmations',
+              onTap: () => _openExercise(const AffirmationsScreen()),
             ),
             _ExerciseIconButton(
               icon: Icons.filter_center_focus_rounded,
@@ -380,7 +409,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
               onTap: () => _openExercise(GroundingScreen(appState: _appState)),
             ),
             _ExerciseIconButton(
-              icon: Icons.spa_rounded,
+              icon: Icons.self_improvement_rounded,
               label: 'Meditation',
               onTap: () => _openExercise(const MeditationsScreen()),
             ),
@@ -410,16 +439,16 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
     return Column(
       children: [
         _MoodSectionCard(
-          title: 'Start with this truth',
+          title: 'Remember this',
           child: _SupportText(
             text:
-                'It\'s OK not to feel OK. Relax your body, let your shoulders drop, and take a deep breath.',
+                'It\'s OK not to feel OK. Let your shoulders drop, take a deep breath and relax.',
             isDark: isDark,
           ),
         ),
         const SizedBox(height: 16),
         _ExerciseSectionCard(
-          title: 'Distract your mind with these excercises',
+          title: 'Then, distract your mind with one of these excercises',
           actions: [
             _ExerciseIconButton(
               icon: Icons.air_rounded,
@@ -432,7 +461,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
               onTap: () => _openExercise(const LeafExerciseScreen()),
             ),
             _ExerciseIconButton(
-              icon: Icons.spa_rounded,
+              icon: Icons.self_improvement_rounded,
               label: 'Meditation',
               onTap: () => _openExercise(const MeditationsScreen()),
             ),
@@ -478,6 +507,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
             _ExerciseIconButton(
               icon: Icons.healing_rounded,
               imageAsset: 'assets/images/resilient-health.png',
+              color: Theme.of(context).primaryColor,
               label: 'Heal',
               onTap: () => _goToDestination(4),
             ),
@@ -648,7 +678,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
   }
 
   void _showMoodEntryPopup(BuildContext context, String text) {
-    var dontShowAgain = false;
+    var gotIt = false;
 
     showDialog<void>(
       context: context,
@@ -669,7 +699,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                   children: [
                     Text(
                       text,
-                      style: const TextStyle(fontSize: 20, height: 1.45),
+                      style: const TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const SizedBox(height: 36),
                     Row(
@@ -679,7 +709,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                             borderRadius: BorderRadius.circular(8),
                             onTap: () {
                               setDialogState(() {
-                                dontShowAgain = !dontShowAgain;
+                                gotIt = !gotIt;
                               });
                             },
                             child: Row(
@@ -689,13 +719,13 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                                   width: 32,
                                   height: 32,
                                   child: Checkbox(
-                                    value: dontShowAgain,
+                                    value: gotIt,
                                     materialTapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
                                     visualDensity: VisualDensity.compact,
                                     onChanged: (value) {
                                       setDialogState(() {
-                                        dontShowAgain = value ?? false;
+                                        gotIt = value ?? false;
                                       });
                                     },
                                   ),
@@ -703,8 +733,8 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                                 const SizedBox(width: 12),
                                 const Flexible(
                                   child: Text(
-                                    "Don't show again",
-                                    style: TextStyle(fontSize: 18),
+                                    'Got it',
+                                    style: TextStyle(fontSize: 14.4),
                                   ),
                                 ),
                               ],
@@ -714,8 +744,11 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                         const SizedBox(width: 16),
                         TextButton(
                           onPressed: () async {
-                            if (dontShowAgain) {
-                              await _appState.setHideMoodEntryPopup(true);
+                            if (gotIt) {
+                              await _appState.setMoodEntryPopupHidden(
+                                widget.emoticonIndex,
+                                true,
+                              );
                             }
                             if (context.mounted) {
                               Navigator.of(context).pop();
@@ -723,7 +756,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
                           },
                           child: const Text(
                             'Close',
-                            style: TextStyle(fontSize: 18),
+                            style: TextStyle(fontSize: 14.4),
                           ),
                         ),
                       ],
@@ -762,12 +795,14 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
 class _ExerciseIconButton extends StatelessWidget {
   final IconData icon;
   final String? imageAsset;
+  final Color? color;
   final String label;
   final VoidCallback onTap;
 
   const _ExerciseIconButton({
     required this.icon,
     this.imageAsset,
+    this.color,
     required this.label,
     required this.onTap,
   });
@@ -776,6 +811,7 @@ class _ExerciseIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
+    final effectiveColor = color ?? primaryColor;
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -789,17 +825,19 @@ class _ExerciseIconButton extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: primaryColor.withAlpha(31),
+                color: effectiveColor.withAlpha(31),
                 shape: BoxShape.circle,
               ),
               clipBehavior: Clip.antiAlias,
               child: imageAsset == null
-                  ? Icon(icon, color: primaryColor, size: 28)
+                  ? Icon(icon, color: effectiveColor, size: 28)
                   : Image.asset(
                       imageAsset!,
                       width: 54,
                       height: 54,
                       fit: BoxFit.cover,
+                      color: color,
+                      colorBlendMode: color == null ? null : BlendMode.srcIn,
                     ),
             ),
             const SizedBox(height: 8),

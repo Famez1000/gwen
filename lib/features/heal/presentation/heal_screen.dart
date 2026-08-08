@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../home/presentation/planning_destination_screen.dart';
 import '../../meditations/presentation/meditations_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
 import 'acceptance_screen.dart';
@@ -191,7 +192,7 @@ class _HealScreenState extends State<HealScreen> {
   }
 
   Future<void> _showHealingMethodsDialog(AppState appState) async {
-    var doNotShowAgain = false;
+    var doNotShowAgain = appState.hideHealMethodsMessage;
     final primaryColor = Theme.of(context).primaryColor;
 
     await showDialog<void>(
@@ -219,45 +220,70 @@ class _HealScreenState extends State<HealScreen> {
                   children: [
                     const Text(
                       'Healing anxiety can happen through repeated practice. The tools and methods provided here help you accept what you feel, release what you are carrying, forgive what needs forgiveness, leave survival mode, and return to your inner strength through meditation.',
-                      style: TextStyle(height: 1.45),
+                      style: TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const SizedBox(height: 14),
                     const Text(
                       'Choose one method at a time. Small moments of safety and courage can teach your nervous system that the anxious wave can pass.',
-                      style: TextStyle(height: 1.45),
+                      style: TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const Spacer(),
-                    CheckboxListTile(
-                      value: doNotShowAgain,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          doNotShowAgain = value ?? false;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: primaryColor,
-                      title: const Text(
-                        'Do not show this message again',
-                        style: TextStyle(fontSize: 14, height: 1.25),
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () {
+                              setDialogState(() {
+                                doNotShowAgain = !doNotShowAgain;
+                              });
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Checkbox(
+                                    value: doNotShowAgain,
+                                    activeColor: primaryColor,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    onChanged: (value) {
+                                      setDialogState(() {
+                                        doNotShowAgain = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Got it',
+                                  style: TextStyle(fontSize: 14, height: 1.25),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        FilledButton(
+                          onPressed: () async {
+                            await appState.setHideHealMethodsMessage(
+                              doNotShowAgain,
+                            );
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                          child: const Text('OK'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                FilledButton(
-                  onPressed: () async {
-                    if (doNotShowAgain) {
-                      await appState.setHideHealMethodsMessage(true);
-                    }
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                    }
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
             );
           },
         );
@@ -268,6 +294,7 @@ class _HealScreenState extends State<HealScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appState = context.watch<AppState>();
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -339,6 +366,139 @@ class _HealScreenState extends State<HealScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 children: [
+                  if (!appState.hasHealPlan) ...[
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  const HealPlanningScreen(),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                );
+                              },
+                        ),
+                      ),
+                      child: GlassCard(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).primaryColor.withAlpha(31),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.route_rounded,
+                                color: Theme.of(context).primaryColor,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(width: 18),
+                            Flexible(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Create a plan with Gwyn to heal your anxiety',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Let Gwyn help you choose gentle healing steps and practices that fit where you are now.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.white60
+                                          : Colors.black.withAlpha(153),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: isDark
+                                  ? Colors.white30
+                                  : Colors.black.withAlpha(77),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  GestureDetector(
+                    onTap: () => _openSurvivalModeSupport(context),
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withAlpha(31),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.health_and_safety_rounded,
+                              color: Colors.teal.shade500,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Get out of survival mode',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Help your nervous system feel safer with one gentle next step.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : Colors.black.withAlpha(153),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: isDark
+                                ? Colors.white30
+                                : Colors.black.withAlpha(77),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   GestureDetector(
                     onTap: () => _openAcceptance(context),
                     child: GlassCard(
@@ -491,64 +651,6 @@ class _HealScreenState extends State<HealScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Practice gently releasing what you no longer need to carry.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark
-                                        ? Colors.white60
-                                        : Colors.black.withAlpha(153),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: isDark
-                                ? Colors.white30
-                                : Colors.black.withAlpha(77),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () => _openSurvivalModeSupport(context),
-                    child: GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.withAlpha(31),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.health_and_safety_rounded,
-                              color: Colors.teal.shade500,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          Flexible(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Get out of survival mode',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    letterSpacing: 0.1,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Help your nervous system feel safer with one gentle next step.',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isDark

@@ -708,6 +708,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         title: 'Monthly',
                         price: _priceForPlan(_SubscriptionPlan.monthly),
                         subtitle: _subtitleForPlan(_SubscriptionPlan.monthly),
+                        badge: '25% off offer',
                         isSelected: _selectedPlan == _SubscriptionPlan.monthly,
                         primaryColor: primaryColor,
                         surfaceText: surfaceText,

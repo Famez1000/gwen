@@ -27,6 +27,12 @@ class _MeditationsScreenState extends State<MeditationsScreen> {
       assetPath: 'sounds/meditation_mandala.mp3',
       color: Color(0xFF7F8C6F),
     ),
+    _MeditationClip(
+      title: 'Guided Meditation',
+      subtitle: 'Calm your mind with this guided meditation',
+      assetPath: 'sounds/guided-meditations/cope/meditation_1.mp3',
+      color: Color(0xFF8B7BAE),
+    ),
   ];
 
   late final AudioPlayer _player;
@@ -127,24 +133,49 @@ class _MeditationsScreenState extends State<MeditationsScreen> {
         ],
       ),
       body: SafeArea(
-        child: ListView.separated(
+        child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          itemCount: _clips.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 14),
-          itemBuilder: (context, index) {
-            final clip = _clips[index];
-            final isActive = _activeIndex == index;
-
-            return _MeditationClipCard(
-              clip: clip,
-              isActive: isActive,
-              isPlaying: isActive && _isPlaying,
-              isDark: isDark,
-              onTap: () => _toggleClip(index),
-            );
-          },
+          children: [
+            const _MeditationSectionTitle(title: 'Guided meditation'),
+            const SizedBox(height: 12),
+            _buildClipCard(index: 2, isDark: isDark),
+            const SizedBox(height: 28),
+            const _MeditationSectionTitle(title: 'Relaxing music'),
+            const SizedBox(height: 12),
+            _buildClipCard(index: 0, isDark: isDark),
+            const SizedBox(height: 14),
+            _buildClipCard(index: 1, isDark: isDark),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildClipCard({required int index, required bool isDark}) {
+    final isActive = _activeIndex == index;
+
+    return _MeditationClipCard(
+      clip: _clips[index],
+      isActive: isActive,
+      isPlaying: isActive && _isPlaying,
+      isDark: isDark,
+      onTap: () => _toggleClip(index),
+    );
+  }
+}
+
+class _MeditationSectionTitle extends StatelessWidget {
+  final String title;
+
+  const _MeditationSectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(
+        context,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
     );
   }
 }
@@ -178,7 +209,7 @@ class _MeditationClipCard extends StatelessWidget {
               color: clip.color.withAlpha(isActive ? 54 : 31),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.spa_rounded, color: clip.color),
+            child: Icon(Icons.self_improvement_rounded, color: clip.color),
           ),
           const SizedBox(width: 14),
           Expanded(

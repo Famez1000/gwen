@@ -3,6 +3,7 @@ import 'dart:async';
 import 'core/state/app_state.dart';
 import 'core/services/gemini_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/review_prompt_service.dart';
 import 'core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import 'features/heal/presentation/heal_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/learning/presentation/understand_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/onboarding/presentation/personalized_onboarding_screen.dart';
 import 'features/sanctuary/presentation/sanctuary_screen.dart';
 import 'features/calm_down/presentation/calm_down_screen.dart';
 import 'features/grounding/presentation/grounding_screen.dart';
@@ -26,6 +28,10 @@ void main() async {
   // Create state singleton
   final appState = AppState();
   await appState.init();
+  await _runStartupStep(
+    'ReviewPromptService.init',
+    ReviewPromptService.instance.init,
+  );
   await _runStartupStep(
     'GeminiService.initializeApiKey',
     GeminiService.instance.initializeApiKey,
@@ -84,25 +90,31 @@ class StillnessApp extends StatelessWidget {
             home:
                 appState.onboardingCompleted && appState.healDisclaimerAccepted
                 ? AppShell(appState: appState)
+                : appState.onboardingTrack == OnboardingTrack.personalized
+                ? PersonalizedOnboardingScreen(
+                    appState: appState,
+                    onAcceptTerms: appState.acceptHealDisclaimer,
+                    onComplete: () => _completeOnboarding(appState),
+                  )
                 : OnboardingScreen(
                     showIntroPages: !appState.onboardingCompleted,
                     onAcceptTerms: appState.acceptHealDisclaimer,
                     onNameSubmitted: appState.setUserName,
-                    onComplete: () async {
-                      await appState.completeOnboarding();
-                      await _runStartupStep(
-                        'NotificationService.scheduleDefaultDailyReminders',
-                        NotificationService
-                            .instance
-                            .scheduleDefaultDailyReminders,
-                      );
-                    },
+                    onComplete: () => _completeOnboarding(appState),
                   ),
           );
         },
       ),
     );
   }
+}
+
+Future<void> _completeOnboarding(AppState appState) async {
+  await appState.completeOnboarding();
+  await _runStartupStep(
+    'NotificationService.scheduleDefaultDailyReminders',
+    NotificationService.instance.scheduleDefaultDailyReminders,
+  );
 }
 
 class AppShell extends StatefulWidget {
@@ -139,6 +151,12 @@ class _AppShellState extends State<AppShell> {
       _currentIndex = index;
       _tabHistory.add(index);
     });
+
+    if (index == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(ReviewPromptService.instance.requestIfEligible());
+      });
+    }
   }
 
   void _goBackToPreviousTab() {
@@ -148,6 +166,12 @@ class _AppShellState extends State<AppShell> {
       _tabHistory.removeLast();
       _currentIndex = _tabHistory.last;
     });
+
+    if (_currentIndex == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(ReviewPromptService.instance.requestIfEligible());
+      });
+    }
   }
 
   void _handleSystemBack() {

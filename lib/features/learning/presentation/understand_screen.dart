@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../home/presentation/planning_destination_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
 import 'ask_yourself_screen.dart';
 import 'body_signals_screen.dart';
@@ -92,7 +93,7 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
   }
 
   Future<void> _showUnderstandMethodsDialog(AppState appState) async {
-    var doNotShowAgain = false;
+    var doNotShowAgain = appState.hideUnderstandMethodsMessage;
     final primaryColor = Theme.of(context).primaryColor;
 
     await showDialog<void>(
@@ -120,45 +121,70 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
                   children: [
                     const Text(
                       'Understanding anxiety starts with noticing what happens before, during, and after it. Your body signals, thoughts, triggers, and patterns can show you what your nervous system is trying to protect you from.',
-                      style: TextStyle(height: 1.45),
+                      style: TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const SizedBox(height: 14),
                     const Text(
                       'Explore one area at a time. Small observations can make anxiety feel less mysterious and give you clearer choices for what to do next.',
-                      style: TextStyle(height: 1.45),
+                      style: TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const Spacer(),
-                    CheckboxListTile(
-                      value: doNotShowAgain,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          doNotShowAgain = value ?? false;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: primaryColor,
-                      title: const Text(
-                        'Do not show this message again',
-                        style: TextStyle(fontSize: 14, height: 1.25),
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () {
+                              setDialogState(() {
+                                doNotShowAgain = !doNotShowAgain;
+                              });
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Checkbox(
+                                    value: doNotShowAgain,
+                                    activeColor: primaryColor,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    onChanged: (value) {
+                                      setDialogState(() {
+                                        doNotShowAgain = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Got it',
+                                  style: TextStyle(fontSize: 14, height: 1.25),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        FilledButton(
+                          onPressed: () async {
+                            await appState.setHideUnderstandMethodsMessage(
+                              doNotShowAgain,
+                            );
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                          child: const Text('OK'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                FilledButton(
-                  onPressed: () async {
-                    if (doNotShowAgain) {
-                      await appState.setHideUnderstandMethodsMessage(true);
-                    }
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                    }
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
             );
           },
         );
@@ -169,8 +195,18 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appState = context.watch<AppState>();
 
     final tiles = [
+      if (!appState.hasUnderstandPlan)
+        _UnderstandTileData(
+          title: 'Create a plan with Gwyn to understand your anxiety',
+          description:
+              'Choose what to explore first: triggers, thoughts, body signals, and patterns.',
+          icon: Icons.route_rounded,
+          color: Theme.of(context).primaryColor,
+          onTap: () => _openScreen(context, const UnderstandPlanningScreen()),
+        ),
       _UnderstandTileData(
         title: 'Body Signals',
         description: 'Notice what anxiety feels like.',
@@ -209,7 +245,7 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
       _UnderstandTileData(
         title: 'Ask yourself',
         description: 'Reflect with a gentle question.',
-        icon: Icons.self_improvement_rounded,
+        icon: Icons.question_answer_rounded,
         color: Colors.teal.shade600,
         onTap: () => _openScreen(context, const AskYourselfScreen()),
       ),
@@ -297,7 +333,7 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
                   crossAxisCount: 2,
                   mainAxisSpacing: 14,
                   crossAxisSpacing: 14,
-                  childAspectRatio: 0.98,
+                  childAspectRatio: 0.86,
                 ),
                 itemBuilder: (context, index) {
                   return _UnderstandTile(data: tiles[index]);
@@ -405,33 +441,37 @@ class _UnderstandTile extends StatelessWidget {
     return GestureDetector(
       onTap: data.onTap,
       child: GlassCard(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(11),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: data.color.withAlpha(31),
                 shape: BoxShape.circle,
               ),
-              child: Icon(data.icon, color: data.color, size: 25),
+              child: Icon(data.icon, color: data.color, size: 23),
             ),
             const Spacer(),
             Text(
               data.title,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 5),
             Text(
               data.description,
-              maxLines: 3,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12,
-                height: 1.3,
+                fontSize: 11,
+                height: 1.22,
                 color: isDark ? Colors.white60 : Colors.black.withAlpha(153),
               ),
             ),

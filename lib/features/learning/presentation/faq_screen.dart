@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/widgets/glass_card.dart';
-import '../../subscription/application/subscription_gate.dart';
 
 class FaqScreen extends StatefulWidget {
   const FaqScreen({super.key});
@@ -62,15 +61,6 @@ class _FaqScreenState extends State<FaqScreen> {
         _openQuestions.add(index);
       }
     });
-  }
-
-  void _openSubscription(BuildContext context) {
-    openGwynChatOrSubscription(
-      context,
-      title: 'Anxiety FAQ with Gwyn',
-      pageContext:
-          'The user opened Gwyn from the anxiety FAQ screen with common questions and answers about anxiety.',
-    );
   }
 
   @override
@@ -142,63 +132,6 @@ class _FaqScreenState extends State<FaqScreen> {
                       : Colors.black.withAlpha(8),
                 ),
                 onPressed: () => Navigator.maybePop(context),
-              ),
-            ),
-            Positioned(
-              top: 6,
-              right: 16,
-              child: _AskGwynButton(onTap: () => _openSubscription(context)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AskGwynButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AskGwynButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).primaryColor;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 82,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: primaryColor.withAlpha(128)),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Image.asset(
-                'assets/images/icon.png',
-                width: 58,
-                height: 58,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Understand with Gwyn',
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.15,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white70 : Colors.black87,
               ),
             ),
           ],

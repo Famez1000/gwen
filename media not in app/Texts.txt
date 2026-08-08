@@ -6,3 +6,13 @@ Feeling anxious all the time is exhausting and can wear you down. Calm your mind
 In those moments when you're not trapped in crippling survival mode, so your anxiety has eased, work on healing. First, understand your anxiety. Then, gradually vanquish it, one step at a time.
 
                 'Distract your mind with upbeat, cheerful music. Play it as loudly as you can, and use headphones if available',
+
+Plan with Gwyn:
+The best way to overcome anxiety is with a structured plan—a personal plan to gradually vanquish it. Let Gwyn help you create one. Whether you want to cope with anxiety, understand it better, or begin the journey of healing, simply tell Gwyn what you'd like to achieve, and she will create a personalized action plan for you.
+
+Plan with Gwyn:
+- Main screen (Let's make a plan)
+- First question screen: Ask whether the user wants to:
+   - just cope with the anxiety, so just feeling better and no more.
+   - try to understand it
+   - try to actually heal it

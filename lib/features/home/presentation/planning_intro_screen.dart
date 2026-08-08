@@ -18,7 +18,7 @@ class PlanningIntroScreen extends StatelessWidget {
         : primaryColor.withAlpha(28);
 
     const introText =
-        "The best way to overcome anxiety and panic attacks is with a structured plan - a personal plan to gradually vanquish it. Let Gwyn help you create one.\n\nWhether you want to just cope with anxiety, understand it better, or begin the journey of healing, simply tell Gwyn what you'd like to achieve, and she will create a personalized action plan for you.";
+        "The best way to overcome anxiety and panic attacks is with a personal plan to gradually vanquish it. Let Gwyn help you create one.\n\nWhether you want to just cope with your anxiety, understand it, or start the journey of healing, simply tell Gwyn what you'd like to achieve, and she will create a personalized action plan for you";
 
     return Scaffold(
       appBar: AppBar(
@@ -34,30 +34,19 @@ class PlanningIntroScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Transform.translate(
-                  offset: const Offset(12, 0),
-                  child: Image.asset(
-                    'assets/images/gwyn-plan.png',
-                    width: 116,
-                    height: 116,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    "Let's make a plan together",
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
+            Image.asset(
+              'assets/images/gwyn-plan.png',
+              height: 150,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              "Let's make a plan together",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 22),
             Container(

@@ -52,22 +52,22 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
             ),
             const SizedBox(height: 14),
+            const SizedBox(height: 14),
             _AboutCard(
-              title: 'Privacy & safety',
-              isOpen: _openSections.contains(1),
-              onTap: () => _toggleSection(1),
+              title: 'What is the main purpose of this app?',
+              isOpen: _openSections.contains(2),
+              onTap: () => _toggleSection(2),
               child: Text(
-                'Your data is saved locally on your phone and never shared with anyone.',
+                'This app was built to help people heal from anxiety. After learning how to cope with anxiety, the next step is understanding why it arises. Coping and understanding are essential steps toward healing from anxiety.',
                 style: _aboutTextStyle(context),
               ),
             ),
-            const SizedBox(height: 14),
             _AboutCard(
               title: 'Who built this app?',
               isOpen: _openSections.contains(2),
               onTap: () => _toggleSection(2),
               child: Text(
-                'This app is for anxiety relief, created by someone who has been struggling with anxiety for a long time. For more information see the website at http://www.mlmasters.com/gwyn',
+                'This app was created by someone who has been struggling with anxiety for a long time. For more information see the website at http://www.mlmasters.com/gwyn',
                 style: _aboutTextStyle(context),
               ),
             ),

@@ -4,14 +4,18 @@ import '../../breathing/presentation/breathing_screen.dart';
 import '../../bubble_pop/presentation/bubble_pop_screen.dart';
 import '../../drawing_guess/presentation/drawing_guess_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
+import '../../home/presentation/planning_destination_screen.dart';
 import '../../meditations/presentation/meditations_screen.dart';
-import '../../reflection/presentation/reflection_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
 import '../../thought_support/presentation/thought_support_screen.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import 'gwen_joke_screen.dart';
+import 'gwyn_puzzle_screen.dart';
+import 'hike_screen.dart';
 import 'leaf_exercise_screen.dart';
+import 'my_truth_editor.dart';
+import 'socialize_screen.dart';
 
 import 'package:provider/provider.dart';
 
@@ -76,7 +80,7 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
   }
 
   Future<void> _showCopeMethodsDialog(AppState appState) async {
-    var doNotShowAgain = false;
+    var doNotShowAgain = appState.hideCopeMethodsMessage;
     final primaryColor = Theme.of(context).primaryColor;
 
     await showDialog<void>(
@@ -103,46 +107,71 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Coping tools help you interrupt the anxiety spiral in the moment. They can distract your mind, steady your body, and give your nervous system a small signal of safety.',
-                      style: TextStyle(height: 1.45),
+                      'Coping tools help you interrupt the anxiety spiral in the moment. They can distract your mind, steady your body, and give your nervous system a signal of safety.',
+                      style: TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const SizedBox(height: 14),
                     const Text(
                       'Choose one tool at a time. You do not need to feel calm immediately; even a tiny pause, breath, laugh, or grounding moment can help the wave pass.',
-                      style: TextStyle(height: 1.45),
+                      style: TextStyle(fontSize: 16, height: 1.45),
                     ),
                     const Spacer(),
-                    CheckboxListTile(
-                      value: doNotShowAgain,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          doNotShowAgain = value ?? false;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: primaryColor,
-                      title: const Text(
-                        'Do not show this message again',
-                        style: TextStyle(fontSize: 14, height: 1.25),
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () {
+                              setDialogState(() {
+                                doNotShowAgain = !doNotShowAgain;
+                              });
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Checkbox(
+                                    value: doNotShowAgain,
+                                    activeColor: primaryColor,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    onChanged: (value) {
+                                      setDialogState(() {
+                                        doNotShowAgain = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Got it',
+                                  style: TextStyle(fontSize: 14, height: 1.25),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        FilledButton(
+                          onPressed: () async {
+                            await appState.setHideCopeMethodsMessage(
+                              doNotShowAgain,
+                            );
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                          child: const Text('OK'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                FilledButton(
-                  onPressed: () async {
-                    if (doNotShowAgain) {
-                      await appState.setHideCopeMethodsMessage(true);
-                    }
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                    }
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
             );
           },
         );
@@ -153,7 +182,7 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
   @override
   Widget build(BuildContext context) {
     //debugPrint('SanctuaryScreen build started');
-    final appState = Provider.of<AppState>(context, listen: false);
+    final appState = context.watch<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -204,6 +233,7 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                             'Give me a grounding exercise',
                             'Tell me something reassuring',
                           ],
+                          showGwynHeader: false,
                           previewBeforeSubscription: true,
                           previewDialogMessage:
                               'Here you can chat with Gwyn about coping with anxiety. This preview uses built-in example responses so you can see how Gwyn replies before subscribing.',
@@ -243,15 +273,46 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 children: [
+                  if (!appState.hasCopePlan) ...[
+                    _SanctuaryCard(
+                      title:
+                          "Create a plan with Gwyn to cope with your anxiety",
+                      desc:
+                          "Let Gwyn help you choose the coping tools and next steps that fit your anxious moments.",
+                      icon: Icons.route_rounded,
+                      color: Theme.of(context).primaryColor,
+                      onTap: () => _navigateToScreen(
+                        context,
+                        const CopePlanningScreen(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   _SanctuaryCard(
-                    title: "Draw & Guess",
+                    title: "My Truth",
                     desc:
-                        "Sketch anything on the canvas and let Gwyn make a playful guess.",
-                    icon: Icons.brush_rounded,
-                    imageAsset: 'assets/images/gwyn-draw.png',
-                    color: Colors.deepPurple.shade300,
-                    onTap: () =>
-                        _navigateToScreen(context, const DrawingGuessScreen()),
+                        "Write and keep the truths that bring you back to reality during anxious moments.",
+                    icon: Icons.fact_check_rounded,
+                    color: Colors.green.shade600,
+                    onTap: () => showMyTruthEditor(context, appState),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _SanctuaryCard(
+                    title: "Affirmations",
+                    desc:
+                        "Choose gentle reminders for anxious moments and copy the words you want to keep nearby.",
+                    icon: Icons.record_voice_over_rounded,
+                    color: Colors.blue.shade500,
+                    onTap: () async {
+                      await appState.setCopeActivityCompletedToday(
+                        AppState.copeAffirmationsActivity,
+                        true,
+                      );
+                      if (!context.mounted) return;
+                      _navigateToScreen(context, const AffirmationsScreen());
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -261,21 +322,14 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                         "Quietly watch leaves drifting to distract your mind.",
                     icon: Icons.eco_rounded,
                     color: Colors.green.shade600,
-                    onTap: () =>
-                        _navigateToScreen(context, const LeafExerciseScreen()),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _SanctuaryCard(
-                    title: "Let Gwyn tell a joke",
-                    desc: "Let Gwyn tell a good joke for a smile.",
-                    icon: Icons.sentiment_satisfied_alt_rounded,
-                    imageAsset: 'assets/images/gwen_funny2.png',
-                    color: Colors.orange.shade600,
-                    onTap: () => openSubscribedFeatureOrSubscription(
-                      context,
-                      const GwynJokeScreen(),
-                    ),
+                    onTap: () async {
+                      await appState.setCopeActivityCompletedToday(
+                        AppState.copeLeafActivity,
+                        true,
+                      );
+                      if (!context.mounted) return;
+                      _navigateToScreen(context, const LeafExerciseScreen());
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -285,15 +339,22 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                         "Shift racing thoughts using the interactive 5-4-3-2-1 sensory awareness method.",
                     icon: Icons.filter_center_focus_rounded,
                     color: Theme.of(context).colorScheme.secondary,
-                    onTap: () => _navigateToScreen(
-                      context,
-                      GroundingScreen(appState: appState),
-                    ),
+                    onTap: () async {
+                      await appState.setCopeActivityCompletedToday(
+                        AppState.copeGroundingActivity,
+                        true,
+                      );
+                      if (!context.mounted) return;
+                      _navigateToScreen(
+                        context,
+                        GroundingScreen(appState: appState),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
 
                   _SanctuaryCard(
-                    title: "Breathe Exercises",
+                    title: "Breathing Exercises",
                     desc:
                         "Practice guided breathing patterns to steady your body and calm your nervous system.",
                     icon: Icons.air_rounded,
@@ -306,13 +367,43 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                   const SizedBox(height: 16),
 
                   _SanctuaryCard(
-                    title: "Meditations",
-                    desc:
-                        "Play calming sound clips for breathing, drawing, grounding, or quiet rest.",
-                    icon: Icons.spa_rounded,
-                    color: Colors.indigo.shade400,
+                    title: "Socialize",
+                    desc: "Talk with friends to distract your mind.",
+                    icon: Icons.groups_rounded,
+                    color: Colors.blue.shade500,
                     onTap: () =>
-                        _navigateToScreen(context, const MeditationsScreen()),
+                        _navigateToScreen(context, const SocializeScreen()),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _SanctuaryCard(
+                    title: "Take a Hike",
+                    desc: "Take a walk in nature.",
+                    icon: Icons.hiking_rounded,
+                    color: Colors.green.shade700,
+                    onTap: () => _navigateToScreen(context, const HikeScreen()),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _SanctuaryCard(
+                    title: "Bubble Pop",
+                    desc:
+                        "Pop falling bubbles for a playful stress-release break with light taps and soft visuals.",
+                    icon: Icons.bubble_chart_rounded,
+                    color: Colors.cyan.shade600,
+                    onTap: () =>
+                        _navigateToScreen(context, const BubblePopScreen()),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _SanctuaryCard(
+                    title: "Puzzle with Gwyn",
+                    desc:
+                        "Slide the image tiles into place to restore Gwyn's picture.",
+                    icon: Icons.grid_view_rounded,
+                    color: Colors.purple.shade400,
+                    onTap: () =>
+                        _navigateToScreen(context, const GwynPuzzleScreen()),
                   ),
                   const SizedBox(height: 16),
 
@@ -330,38 +421,46 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                   const SizedBox(height: 16),
 
                   _SanctuaryCard(
-                    title: "Affirmations",
+                    title: "Meditations",
                     desc:
-                        "Choose gentle reminders for anxious moments and copy the words you want to keep nearby.",
-                    icon: Icons.auto_awesome_rounded,
-                    color: Colors.pink.shade300,
-                    onTap: () =>
-                        _navigateToScreen(context, const AffirmationsScreen()),
+                        "Play calming sound clips for breathing, drawing, grounding, or quiet rest.",
+                    icon: Icons.self_improvement_rounded,
+                    color: Colors.indigo.shade400,
+                    onTap: () async {
+                      await appState.setCopeActivityCompletedToday(
+                        AppState.copeMeditationsActivity,
+                        true,
+                      );
+                      if (!context.mounted) return;
+                      _navigateToScreen(context, const MeditationsScreen());
+                    },
                   ),
                   const SizedBox(height: 16),
 
                   _SanctuaryCard(
-                    title: "Bubble Pop",
+                    title: "Draw & Guess",
                     desc:
-                        "Pop falling bubbles for a playful stress-release break with light taps and soft visuals.",
-                    icon: Icons.bubble_chart_rounded,
-                    color: Colors.cyan.shade600,
+                        "Sketch anything on the canvas and let Gwyn make a playful guess.",
+                    icon: Icons.brush_rounded,
+                    imageAsset: 'assets/images/gwyn-draw.png',
+                    color: Colors.deepPurple.shade300,
                     onTap: () =>
-                        _navigateToScreen(context, const BubblePopScreen()),
+                        _navigateToScreen(context, const DrawingGuessScreen()),
                   ),
                   const SizedBox(height: 16),
 
                   _SanctuaryCard(
-                    title: "Daily Reflection",
-                    desc:
-                        "Track trigger factors, write a brief sentence journal, or save local voice notes.",
-                    icon: Icons.draw_rounded,
-                    color: Colors.amber.shade700,
-                    onTap: () => _navigateToScreen(
+                    title: "Let Gwyn tell a joke",
+                    desc: "Let Gwyn tell a good joke for a smile.",
+                    icon: Icons.sentiment_satisfied_alt_rounded,
+                    imageAsset: 'assets/images/gwen_funny2.png',
+                    color: Colors.orange.shade600,
+                    onTap: () => openSubscribedFeatureOrSubscription(
                       context,
-                      ReflectionScreen(appState: appState),
+                      const GwynJokeScreen(),
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -406,7 +505,7 @@ class _VanquishWithGwynButton extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Vanquish with Gwyn',
+              'Cope with Gwyn',
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -460,7 +559,7 @@ class _SanctuaryCard extends StatelessWidget {
   final IconData icon;
   final String? imageAsset;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _SanctuaryCard({
     required this.title,
@@ -468,7 +567,7 @@ class _SanctuaryCard extends StatelessWidget {
     required this.icon,
     this.imageAsset,
     required this.color,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
@@ -532,10 +631,11 @@ class _SanctuaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: isDark ? Colors.white30 : Colors.black.withAlpha(77),
-              ),
+              if (onTap != null)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: isDark ? Colors.white30 : Colors.black.withAlpha(77),
+                ),
             ],
           ),
         ),

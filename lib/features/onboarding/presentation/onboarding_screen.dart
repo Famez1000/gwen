@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../subscription/presentation/subscription_screen.dart';
 
 @Preview(name: 'Onboarding', group: 'Gwyn', size: Size(390, 844))
 Widget onboardingPreview() {
@@ -15,6 +16,7 @@ Widget onboardingPreview() {
       onComplete: onboardingPreviewNoop,
       onAcceptTerms: onboardingPreviewNoop,
       onNameSubmitted: onboardingPreviewNameNoop,
+      showPaywallOnComplete: false,
     ),
   );
 }
@@ -27,6 +29,7 @@ class OnboardingScreen extends StatefulWidget {
   final Future<void> Function() onAcceptTerms;
   final Future<void> Function(String name)? onNameSubmitted;
   final bool showIntroPages;
+  final bool showPaywallOnComplete;
 
   const OnboardingScreen({
     super.key,
@@ -34,6 +37,7 @@ class OnboardingScreen extends StatefulWidget {
     required this.onAcceptTerms,
     this.onNameSubmitted,
     this.showIntroPages = true,
+    this.showPaywallOnComplete = true,
   });
 
   @override
@@ -111,6 +115,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
     await _submitNameIfPresent();
     await widget.onAcceptTerms();
+    if (widget.showIntroPages && widget.showPaywallOnComplete && mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => const SubscriptionScreen(isOnboardingPaywall: true),
+        ),
+      );
+      if (!mounted) return;
+    }
     await widget.onComplete();
   }
 

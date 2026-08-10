@@ -151,6 +151,13 @@ class _PersonalizedOnboardingScreenState
     } else {
       await widget.appState.setPendingOnboardingPlan(_goal);
     }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const SubscriptionScreen(isOnboardingPaywall: true),
+      ),
+    );
+    if (!mounted) return;
     await widget.onComplete();
   }
 
@@ -598,22 +605,6 @@ class _PersonalizedOnboardingScreenState
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          _PrimaryButton(
-            label: 'View Premium options',
-            color: color,
-            onTap: () async {
-              if (!widget.isPreview) {
-                await widget.appState.setPendingOnboardingPlan(_goal);
-              }
-              if (!mounted) return;
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-              );
-              if (mounted) setState(() {});
-            },
-          ),
           const SizedBox(height: 12),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -637,15 +628,10 @@ class _PersonalizedOnboardingScreenState
               ),
             ],
           ),
-          TextButton(
-            onPressed: _acceptedLegal && !_isFinishing ? _finish : null,
-            child: Text(
-              widget.isPreview
-                  ? 'Close preview'
-                  : widget.appState.hasActiveSubscription
-                  ? 'Start my complete plan'
-                  : 'Continue with free tools',
-            ),
+          _PrimaryButton(
+            label: widget.isPreview ? 'Close preview' : 'Continue',
+            color: color,
+            onTap: _acceptedLegal && !_isFinishing ? _finish : null,
           ),
           TextButton(onPressed: _back, child: const Text('Back')),
         ],

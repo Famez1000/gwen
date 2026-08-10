@@ -77,6 +77,12 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
   }
 
   Future<void> _initializeMusic() async {
+    // The leaf animation and its music use separate native players. Avoid
+    // claiming exclusive audio focus here, otherwise starting the music can
+    // pause the video player on Android.
+    await _musicPlayer.setAudioContext(
+      AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build(),
+    );
     await _musicPlayer.setReleaseMode(ReleaseMode.loop);
     await _musicPlayer.setSource(AssetSource('sounds/leaf.mp3'));
   }

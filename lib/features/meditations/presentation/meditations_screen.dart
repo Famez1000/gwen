@@ -77,12 +77,6 @@ class _MeditationsScreenState extends State<MeditationsScreen> {
   }
 
   Future<void> _toggleClip(int index) async {
-    if (!GlobalSoundService.instance.isEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Turn on Sound in Settings first.')),
-      );
-      return;
-    }
     final isActiveClip = _activeIndex == index;
 
     HapticFeedback.selectionClick();

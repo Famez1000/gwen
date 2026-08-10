@@ -147,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : OnboardingScreen(
                 onAcceptTerms: () async {},
                 onNameSubmitted: (_) async {},
+                showPaywallOnComplete: false,
                 onComplete: () async {
                   if (mounted) Navigator.of(context).pop();
                 },

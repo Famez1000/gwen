@@ -14,7 +14,9 @@ import '../../../core/widgets/glass_card.dart';
 import '../../chat/presentation/chat_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
-  const SubscriptionScreen({super.key});
+  final bool isOnboardingPaywall;
+
+  const SubscriptionScreen({super.key, this.isOnboardingPaywall = false});
 
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
@@ -249,7 +251,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ? null
                 : 'Gwyn Plus is active.';
           });
-          if (_openChatAfterNextPurchaseUpdate) {
+          if (widget.isOnboardingPaywall) {
+            Navigator.of(context).pop();
+          } else if (_openChatAfterNextPurchaseUpdate) {
             _openChatAfterNextPurchaseUpdate = false;
             await _openChatAfterPurchase();
           }
@@ -303,7 +307,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     setState(() {
       _isPurchasePending = true;
-      _openChatAfterNextPurchaseUpdate = true;
+      _openChatAfterNextPurchaseUpdate = !widget.isOnboardingPaywall;
       _storeMessage = null;
     });
 
@@ -604,6 +608,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.isOnboardingPaywall,
         title: const Text(
           'Gwyn Plus',
           style: TextStyle(fontWeight: FontWeight.w600),
@@ -611,6 +616,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          if (widget.isOnboardingPaywall)
+            IconButton(
+              tooltip: 'Skip',
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close_rounded, size: 22),
+            ),
+        ],
       ),
       body: Stack(
         children: [

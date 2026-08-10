@@ -326,17 +326,33 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
               ),
             ),
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                itemCount: tiles.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.86,
-                ),
-                itemBuilder: (context, index) {
-                  return _UnderstandTile(data: tiles[index]);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const horizontalPadding = 20.0;
+                  const spacing = 14.0;
+                  final tileWidth =
+                      (constraints.maxWidth - horizontalPadding * 2 - spacing) /
+                      2;
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      16,
+                      horizontalPadding,
+                      16,
+                    ),
+                    child: Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: [
+                        for (final tile in tiles)
+                          SizedBox(
+                            width: tileWidth,
+                            child: _UnderstandTile(data: tile),
+                          ),
+                      ],
+                    ),
+                  );
                 },
               ),
             ),
@@ -443,6 +459,7 @@ class _UnderstandTile extends StatelessWidget {
       child: GlassCard(
         padding: const EdgeInsets.all(14),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -453,7 +470,7 @@ class _UnderstandTile extends StatelessWidget {
               ),
               child: Icon(data.icon, color: data.color, size: 23),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             Text(
               data.title,
               maxLines: 2,

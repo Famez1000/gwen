@@ -1,5 +1,9 @@
 # Miscellaneous
 apikey.txt
+# Generated Firebase client configuration. Regenerate locally after rotating
+# credentials; never commit the generated files.
+android/app/google-services.json
+lib/firebase_options.dart
 media not in app/Elevenlabs/BU code for MFA.txt
 *.jks
 key.properties

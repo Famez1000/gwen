@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/services/global_sound_service.dart';
 import '../../../core/widgets/glass_card.dart';
 
 class MeditationsScreen extends StatefulWidget {
@@ -45,6 +46,7 @@ class _MeditationsScreenState extends State<MeditationsScreen> {
   void initState() {
     super.initState();
     _player = AudioPlayer(playerId: 'meditations_player');
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
     _completeSubscription = _player.onPlayerComplete.listen((_) {
       if (mounted) {
         setState(() {
@@ -57,12 +59,30 @@ class _MeditationsScreenState extends State<MeditationsScreen> {
 
   @override
   void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
     _completeSubscription.cancel();
     _player.dispose();
     super.dispose();
   }
 
+  void _applyGlobalSound() {
+    final enabled = GlobalSoundService.instance.isEnabled;
+    if (!enabled) {
+      unawaited(_player.pause());
+      if (mounted) setState(() => _isPlaying = false);
+    } else if (_activeIndex != null) {
+      unawaited(_player.resume());
+      if (mounted) setState(() => _isPlaying = true);
+    }
+  }
+
   Future<void> _toggleClip(int index) async {
+    if (!GlobalSoundService.instance.isEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Turn on Sound in Settings first.')),
+      );
+      return;
+    }
     final isActiveClip = _activeIndex == index;
 
     HapticFeedback.selectionClick();

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/review_prompt_service.dart';
+import '../services/global_sound_service.dart';
 import '../services/storage_service.dart';
 
 enum OnboardingTrack { classic, personalized }
@@ -11,6 +12,15 @@ class AppState extends ChangeNotifier {
   static const String copeGroundingActivity = 'grounding';
   static const String copeMeditationsActivity = 'meditations';
   static const String copeLeafActivity = 'leaf_exercise';
+  static const String understandBodySignalsActivity = 'body_signals';
+  static const String understandTriggersActivity = 'triggers';
+  static const String understandPatternsActivity = 'patterns';
+  static const String understandAskYourselfActivity = 'ask_yourself';
+  static const String understandJournalActivity = 'journal';
+  static const String healJournalActivity = 'journal';
+  static const String healAcceptanceActivity = 'acceptance';
+  static const String healForgivenessActivity = 'forgiveness';
+  static const String healMeditationsActivity = 'meditations';
 
   final StorageService _storage = StorageService();
   static const String copePlanId = 'cope_plan_1';
@@ -53,7 +63,7 @@ class AppState extends ChangeNotifier {
   List<Map<String, dynamic>> _progressAnalyses = [];
   int _breathingSessionsCompleted = 0;
   int _streakCount = 0;
-  bool _soundEnabled = true;
+  bool _soundEnabled = false;
   bool _hapticEnabled = true;
   int _themeModeIndex = 0; // 0: System, 1: Light, 2: Dark
   String _emergencyContactName = 'Caregiver';
@@ -62,6 +72,9 @@ class AppState extends ChangeNotifier {
   OnboardingTrack _onboardingTrack = OnboardingTrack.classic;
   String _userName = '';
   String _profileImageBase64 = '';
+  String _anxietyPersonaName = '';
+  String _anxietyPersonaDescription = '';
+  String _anxietyPersonaImageBase64 = '';
   String _moodRealityText = '';
   String _moodFavoriteSongUrl = '';
   bool _hideMoodEntryPopup = false;
@@ -74,9 +87,12 @@ class AppState extends ChangeNotifier {
   bool _reminderSwipeHintSeen = false;
   bool _progressSwipeHintSeen = false;
   Map<String, List<String>> _copeDailyActivityDates = {};
+  Map<String, List<String>> _understandDailyActivityDates = {};
+  Map<String, List<String>> _healDailyActivityDates = {};
   String _copePlanName = 'Cope plan';
   List<String> _copePlanNames = [];
   List<String> _understandPlanNames = [];
+  String _understandPlanFeeling = '';
   List<String> _healPlanNames = [];
   bool _hasCopePlan = false;
   String _activePlanId = '';
@@ -110,6 +126,10 @@ class AppState extends ChangeNotifier {
   OnboardingTrack get onboardingTrack => _onboardingTrack;
   String get userName => _userName;
   String get profileImageBase64 => _profileImageBase64;
+  String get anxietyPersonaName => _anxietyPersonaName;
+  String get anxietyPersonaDescription => _anxietyPersonaDescription;
+  String get anxietyPersonaImageBase64 => _anxietyPersonaImageBase64;
+  bool get hasAnxietyPersona => _anxietyPersonaName.isNotEmpty;
   String get moodRealityText => _moodRealityText;
   String get moodFavoriteSongUrl => _moodFavoriteSongUrl;
   bool get hideMoodEntryPopup => _hideMoodEntryPopup;
@@ -126,6 +146,7 @@ class AppState extends ChangeNotifier {
   List<String> get copePlanNames => List.unmodifiable(_copePlanNames);
   List<String> get understandPlanNames =>
       List.unmodifiable(_understandPlanNames);
+  String get understandPlanFeeling => _understandPlanFeeling;
   List<String> get healPlanNames => List.unmodifiable(_healPlanNames);
   bool get hasCopePlan => _hasCopePlan;
   bool get hasUnderstandPlan => _understandPlanNames.isNotEmpty;
@@ -184,6 +205,7 @@ class AppState extends ChangeNotifier {
     _breathingSessionsCompleted = _storage.getBreathingSessionsCount();
     _streakCount = _storage.getStreakCount();
     _soundEnabled = _storage.getSoundEnabled();
+    GlobalSoundService.instance.setEnabled(_soundEnabled);
     _hapticEnabled = _storage.getHapticEnabled();
     _themeModeIndex = _storage.getThemeMode();
     _onboardingCompleted = _storage.getOnboardingCompleted();
@@ -199,6 +221,9 @@ class AppState extends ChangeNotifier {
         : OnboardingTrack.classic;
     _userName = _storage.getUserName();
     _profileImageBase64 = _storage.getProfileImageBase64();
+    _anxietyPersonaName = _storage.getAnxietyPersonaName();
+    _anxietyPersonaDescription = _storage.getAnxietyPersonaDescription();
+    _anxietyPersonaImageBase64 = _storage.getAnxietyPersonaImageBase64();
     _moodRealityText = _storage.getMoodRealityText();
     _moodFavoriteSongUrl = _storage.getMoodFavoriteSongUrl();
     _hideMoodEntryPopup = _storage.getHideMoodEntryPopup();
@@ -212,9 +237,12 @@ class AppState extends ChangeNotifier {
     _reminderSwipeHintSeen = _storage.getReminderSwipeHintSeen();
     _progressSwipeHintSeen = _storage.getProgressSwipeHintSeen();
     _copeDailyActivityDates = _storage.getCopeDailyActivityDates();
+    _understandDailyActivityDates = _storage.getUnderstandDailyActivityDates();
+    _healDailyActivityDates = _storage.getHealDailyActivityDates();
     _copePlanName = _storage.getCopePlanName();
     _copePlanNames = _storage.getCopePlanNames();
     _understandPlanNames = _storage.getUnderstandPlanNames();
+    _understandPlanFeeling = _storage.getUnderstandPlanFeeling();
     _healPlanNames = _storage.getHealPlanNames();
     _hasCopePlan = _storage.getHasCopePlan();
     if (!_hasCopePlan && _storage.hasStoredCopePlanName()) {
@@ -426,8 +454,14 @@ class AppState extends ChangeNotifier {
 
   // Settings configuration
   Future<void> toggleSound() async {
-    _soundEnabled = !_soundEnabled;
-    await _storage.setSoundEnabled(_soundEnabled);
+    await setSoundEnabled(!_soundEnabled);
+  }
+
+  Future<void> setSoundEnabled(bool enabled) async {
+    if (_soundEnabled == enabled) return;
+    _soundEnabled = enabled;
+    GlobalSoundService.instance.setEnabled(enabled);
+    await _storage.setSoundEnabled(enabled);
     notifyListeners();
   }
 
@@ -477,6 +511,22 @@ class AppState extends ChangeNotifier {
   Future<void> setProfileImageBase64(String imageBase64) async {
     _profileImageBase64 = imageBase64;
     await _storage.setProfileImageBase64(imageBase64);
+    notifyListeners();
+  }
+
+  Future<void> setAnxietyPersona({
+    required String name,
+    required String description,
+    required String imageBase64,
+  }) async {
+    _anxietyPersonaName = name.trim();
+    _anxietyPersonaDescription = description.trim();
+    _anxietyPersonaImageBase64 = imageBase64;
+    await _storage.setAnxietyPersona(
+      name: _anxietyPersonaName,
+      description: _anxietyPersonaDescription,
+      imageBase64: _anxietyPersonaImageBase64,
+    );
     notifyListeners();
   }
 
@@ -650,6 +700,95 @@ class AppState extends ChangeNotifier {
     return streak;
   }
 
+  bool isUnderstandActivityCompletedToday(String activity) {
+    return (_understandDailyActivityDates[activity] ?? const <String>[])
+        .contains(_dateKey(DateTime.now()));
+  }
+
+  Future<void> setUnderstandActivityCompletedToday(
+    String activity,
+    bool completed,
+  ) async {
+    final today = _dateKey(DateTime.now());
+    final dates = {...?_understandDailyActivityDates[activity]};
+    if (completed) {
+      dates.add(today);
+    } else {
+      dates.remove(today);
+    }
+
+    _understandDailyActivityDates = {
+      ..._understandDailyActivityDates,
+      activity: dates.toList()..sort(),
+    };
+    await _storage.setUnderstandDailyActivityDates(
+      _understandDailyActivityDates,
+    );
+    notifyListeners();
+  }
+
+  int understandActivityStreak(String activity) {
+    final dates = (_understandDailyActivityDates[activity] ?? const <String>[])
+        .toSet();
+    if (dates.isEmpty) return 0;
+
+    var cursor = _dateOnly(DateTime.now());
+    if (!dates.contains(_dateKey(cursor))) {
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+
+    var streak = 0;
+    while (dates.contains(_dateKey(cursor))) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  bool isHealActivityCompletedToday(String activity) {
+    return (_healDailyActivityDates[activity] ?? const <String>[]).contains(
+      _dateKey(DateTime.now()),
+    );
+  }
+
+  Future<void> setHealActivityCompletedToday(
+    String activity,
+    bool completed,
+  ) async {
+    final today = _dateKey(DateTime.now());
+    final dates = {...?_healDailyActivityDates[activity]};
+    if (completed) {
+      dates.add(today);
+    } else {
+      dates.remove(today);
+    }
+
+    _healDailyActivityDates = {
+      ..._healDailyActivityDates,
+      activity: dates.toList()..sort(),
+    };
+    await _storage.setHealDailyActivityDates(_healDailyActivityDates);
+    notifyListeners();
+  }
+
+  int healActivityStreak(String activity) {
+    final dates = (_healDailyActivityDates[activity] ?? const <String>[])
+        .toSet();
+    if (dates.isEmpty) return 0;
+
+    var cursor = _dateOnly(DateTime.now());
+    if (!dates.contains(_dateKey(cursor))) {
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+
+    var streak = 0;
+    while (dates.contains(_dateKey(cursor))) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
   Future<void> setCopePlanName(String name) async {
     final trimmed = name.trim();
     final nextName = trimmed.isEmpty ? 'Cope plan' : trimmed;
@@ -699,7 +838,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveUnderstandPlan({String? name}) async {
+  Future<void> saveUnderstandPlan({String? name, String? feeling}) async {
     final nextName = (name?.trim().isNotEmpty ?? false)
         ? name!.trim()
         : nextUnderstandPlanName;
@@ -710,6 +849,12 @@ class AppState extends ChangeNotifier {
     if (!alreadySaved) {
       _understandPlanNames = [..._understandPlanNames, nextName];
       await _storage.setUnderstandPlanNames(_understandPlanNames);
+    }
+
+    final nextFeeling = feeling?.trim();
+    if (nextFeeling != null && nextFeeling.isNotEmpty) {
+      _understandPlanFeeling = nextFeeling;
+      await _storage.setUnderstandPlanFeeling(nextFeeling);
     }
 
     _activePlanId = understandPlanIdForName(nextName);

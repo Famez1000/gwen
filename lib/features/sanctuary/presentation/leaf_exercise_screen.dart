@@ -1,6 +1,11 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+
+import '../../../core/services/global_sound_service.dart';
 
 class LeafExerciseScreen extends StatefulWidget {
   const LeafExerciseScreen({super.key});
@@ -12,6 +17,8 @@ class LeafExerciseScreen extends StatefulWidget {
 class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
   late final VideoPlayerController _videoController;
   late final Future<void> _videoInit;
+  late final AudioPlayer _musicPlayer;
+  late final Future<void> _musicInit;
   bool _soundEnabled = false;
   bool _loopEnabled = true;
   double _playbackSpeed = 0.75;
@@ -26,6 +33,9 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
     _videoController = VideoPlayerController.asset(
       'assets/videos/falling_leafs_1.mp4',
     );
+    _musicPlayer = AudioPlayer(playerId: 'leaf_exercise_music');
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
+    _musicInit = _initializeMusic();
     _videoInit = _videoController.initialize().then((_) {
       _videoController
         ..setLooping(true)
@@ -35,10 +45,15 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
       if (mounted) setState(() {});
     });
     _videoController.addListener(_refresh);
+    if (GlobalSoundService.instance.isEnabled) {
+      _soundEnabled = true;
+      unawaited(_resumeMusicWhenReady());
+    }
   }
 
   @override
   void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
@@ -46,28 +61,59 @@ class _LeafExerciseScreenState extends State<LeafExerciseScreen> {
     _videoController
       ..removeListener(_refresh)
       ..dispose();
+    _musicPlayer.dispose();
     super.dispose();
+  }
+
+  void _applyGlobalSound() {
+    unawaited(_setSoundEnabled(GlobalSoundService.instance.isEnabled));
+  }
+
+  Future<void> _resumeMusicWhenReady() async {
+    await _musicInit;
+    if (_soundEnabled && _videoController.value.isPlaying) {
+      await _musicPlayer.resume();
+    }
+  }
+
+  Future<void> _initializeMusic() async {
+    await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+    await _musicPlayer.setSource(AssetSource('sounds/leaf.mp3'));
   }
 
   void _refresh() {
     if (mounted) setState(() {});
   }
 
-  void _togglePlayback() {
+  Future<void> _togglePlayback() async {
     if (!_videoController.value.isInitialized) return;
 
     if (_videoController.value.isPlaying) {
-      _videoController.pause();
+      await _videoController.pause();
+      if (_soundEnabled) await _musicPlayer.pause();
     } else {
-      _videoController.play();
+      await _videoController.play();
+      if (_soundEnabled) {
+        await _musicInit;
+        await _musicPlayer.resume();
+      }
     }
   }
 
-  void _toggleSound() {
+  Future<void> _toggleSound() async {
     if (!_videoController.value.isInitialized) return;
 
-    setState(() => _soundEnabled = !_soundEnabled);
-    _videoController.setVolume(_soundEnabled ? 1 : 0);
+    await _setSoundEnabled(!_soundEnabled);
+  }
+
+  Future<void> _setSoundEnabled(bool enabled) async {
+    if (mounted) setState(() => _soundEnabled = enabled);
+    await _musicInit;
+    if (_soundEnabled && _videoController.value.isPlaying) {
+      await _musicPlayer.resume();
+    } else {
+      await _musicPlayer.pause();
+    }
   }
 
   void _toggleLoop() {

@@ -6,19 +6,14 @@ import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../affirmations/presentation/affirmations_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
-import '../../heal/presentation/acceptance_screen.dart';
-import '../../heal/presentation/forgiveness_screen.dart';
-import '../../heal/presentation/let_go_screen.dart';
-import '../../journaling/presentation/journaling_screen.dart';
-import '../../learning/presentation/ask_yourself_screen.dart';
-import '../../learning/presentation/body_signals_screen.dart';
-import '../../learning/presentation/patterns_screen.dart';
-import '../../learning/presentation/triggers_screen.dart';
 import '../../meditations/presentation/meditations_screen.dart';
 import '../../profile/presentation/my_plans_screen.dart';
 import '../../reminders/presentation/reminders_screen.dart';
+import '../../sanctuary/presentation/anxiety_persona_screen.dart';
 import '../../sanctuary/presentation/leaf_exercise_screen.dart';
 import '../../sanctuary/presentation/my_truth_editor.dart';
+import 'heal_daily_plan_table.dart';
+import 'understand_daily_plan_table.dart';
 
 enum _PlanningDestination { cope, understand, heal }
 
@@ -285,37 +280,20 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
         options: ['Yes', 'No'],
       ),
       const _QuestionConfig(
-        title: 'In what situation do you feel anxious?',
+        title: "Is there something you've been struggling to accept?",
         subtitle:
-            'Tick the situations that fit, or describe your own. Knowing this lets Gwyn make an action plan.',
-        type: _QuestionType.multiWithText,
-        options: [
-          'Social situations',
-          'Work',
-          'School',
-          'Health',
-          'Finances',
-          'Relationships',
-          'Driving',
-          'Crowds',
-          'Conflict',
-          'Being alone',
-          'Uncertainty',
-        ],
+            'Name what feels difficult to accept right now, without judging yourself for it.',
+        type: _QuestionType.openFirst,
+        hintText: 'Write what you are working to accept.',
       ),
       const _QuestionConfig(
         title:
-            'How much time do you have available per week for healing practices?',
+            'Is there someone you can forgive now, or someone you feel ready to ask for forgiveness?',
         subtitle:
-            'This keeps the plan realistic. A small practice you repeat is better than a big plan you cannot sustain.',
-        type: _QuestionType.single,
-        options: ['15 min', '30 min', '1 hour', 'More than 1 hour'],
-      ),
-      const _QuestionConfig(
-        title: 'Additional info Gwyn could use in her plan',
+            'This can include forgiving yourself. Share only what feels safe and useful.',
         type: _QuestionType.openGoal,
         hintText:
-            'Write what you want to be able to do when the anxious thought appears.',
+            'Write who comes to mind and what forgiveness could mean for you.',
       ),
     ],
   };
@@ -407,6 +385,7 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
       case _PlanningDestination.understand:
         await appState.saveUnderstandPlan(
           name: appState.nextUnderstandPlanName,
+          feeling: _firstTextController.text,
         );
         await NotificationService.instance.savePlanReminderSchedules(
           'understand',
@@ -561,15 +540,15 @@ class _PlanningFlowScreenState extends State<_PlanningFlowScreen> {
             if (_secondTextController.text.trim().isNotEmpty)
               'Your current insight: ${_secondTextController.text.trim()}',
           ]),
-          const _PlanSection('Step 2: Journal the healing pattern', [
-            'Write the anxious thought at the top of the page.',
-            'Write the feeling it creates underneath.',
-            'Write a kinder, truer response beside it.',
+          _PlanSection('Step 2: Practice acceptance', [
+            'What you are working to accept: ${_firstTextController.text.trim()}',
+            'Let the feeling be present without judging or fighting it.',
+            'Write one gentle truth that makes acceptance feel safer.',
           ]),
-          const _PlanSection('Step 3: Acceptance and forgiveness', [
-            'Accept that anxiety is present without fighting the sensation.',
-            'Forgive yourself for needing time to heal.',
-            'Let go of the old protective story one small piece at a time.',
+          _PlanSection('Step 3: Practice forgiveness', [
+            'Your forgiveness focus: ${_goalController.text.trim()}',
+            'Choose one small step toward forgiving or asking for forgiveness.',
+            'Include self-forgiveness wherever it is needed.',
           ]),
           const _PlanSection('Step 4: Meditation and visualization', [
             'Meditate on the thought while staying soft in the body.',
@@ -1209,6 +1188,24 @@ class _CopePlanResultView extends StatelessWidget {
                   TableRow(
                     children: [
                       const _CopePlanActivityCell(
+                        'Give your anxious thoughts a face and a name so you can separate them from yourself',
+                      ),
+                      _CopePlanMethodCell(
+                        label: 'Create persona',
+                        icon: Icons.theater_comedy_rounded,
+                        color: Colors.amber.shade700,
+                        onTap: () => _openTool(
+                          context,
+                          AnxietyPersonaScreen(
+                            appState: context.read<AppState>(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TableRow(
+                    children: [
+                      const _CopePlanActivityCell(
                         'In the morning start with affirmations to shape a positive mindset for the day',
                       ),
                       _CopePlanMethodCell(
@@ -1292,19 +1289,8 @@ class _UnderstandPlanResultView extends StatelessWidget {
   String get _firstAnswer =>
       answers.isEmpty ? 'what you feel' : answers.first.answer.toLowerCase();
 
-  void _openTool(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
-
   @override
   Widget build(BuildContext context) {
-    final borderColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white24
-        : Colors.black54;
-    final headerColor = Theme.of(context).brightness == Brightness.dark
-        ? color.withAlpha(65)
-        : const Color(0xFFDCE8C4);
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
@@ -1354,112 +1340,7 @@ class _UnderstandPlanResultView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        GlassCard(
-          padding: EdgeInsets.zero,
-          borderRadius: 8,
-          border: Border.all(color: borderColor),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _CopePlanMessageRow(
-                text:
-                    'Gwyn has created 3 reminders for you to help you understand',
-                linkText: '(click to open)',
-                onLinkTap: () => _openTool(context, const RemindersScreen()),
-              ),
-              Divider(height: 1, thickness: 1, color: borderColor),
-              Table(
-                columnWidths: const {
-                  0: FlexColumnWidth(1.65),
-                  1: FlexColumnWidth(1),
-                },
-                border: TableBorder(
-                  verticalInside: BorderSide(color: borderColor),
-                  horizontalInside: BorderSide(color: borderColor),
-                ),
-                children: [
-                  TableRow(
-                    decoration: BoxDecoration(color: headerColor),
-                    children: const [
-                      _CopePlanHeaderCell('Daily Activities'),
-                      _CopePlanHeaderCell('Methods', centered: true),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      _CopePlanActivityCell(
-                        "In the morning, reflect in the app's Journal page on why you often feel $_firstAnswer",
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Body Signals',
-                        icon: Icons.monitor_heart_rounded,
-                        color: Colors.pink.shade300,
-                        onTap: () =>
-                            _openTool(context, const BodySignalsScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'The moment your anxious feeling gets triggered, write down what exactly that trigger was',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Triggers',
-                        icon: Icons.bolt_rounded,
-                        color: Colors.amber.shade700,
-                        onTap: () => _openTool(context, const TriggersScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'Find the patterns that lead up to the anxiety',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Patterns',
-                        icon: Icons.insights_rounded,
-                        color: Colors.indigo.shade400,
-                        onTap: () => _openTool(context, const PatternsScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'In the evening, while playing meditative music, ask yourself directed questions to better understand what is causing the anxiety.',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Ask yourself',
-                        icon: Icons.question_answer_rounded,
-                        color: Colors.teal.shade600,
-                        onTap: () =>
-                            _openTool(context, const AskYourselfScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'Throughout the day, notice your thoughts without judging them. They may offer valuable clues about the source of your anxiety.',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Journal',
-                        icon: Icons.book_rounded,
-                        color: color,
-                        onTap: () => _openTool(
-                          context,
-                          JournalingScreen(appState: context.read<AppState>()),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        UnderstandDailyPlanTable(color: color, feeling: _firstAnswer),
         const SizedBox(height: 32),
         _PlanActionButtons(color: color),
       ],
@@ -1480,19 +1361,8 @@ class _HealPlanResultView extends StatelessWidget {
     required this.onChangeAnswers,
   });
 
-  void _openTool(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
-
   @override
   Widget build(BuildContext context) {
-    final borderColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white24
-        : Colors.black54;
-    final headerColor = Theme.of(context).brightness == Brightness.dark
-        ? color.withAlpha(65)
-        : const Color(0xFFDCE8C4);
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
@@ -1542,112 +1412,7 @@ class _HealPlanResultView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        GlassCard(
-          padding: EdgeInsets.zero,
-          borderRadius: 8,
-          border: Border.all(color: borderColor),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _CopePlanMessageRow(
-                text: 'Gwyn has created 3 reminders for you to help you heal',
-                linkText: '(click to open)',
-                onLinkTap: () => _openTool(context, const RemindersScreen()),
-              ),
-              Divider(height: 1, thickness: 1, color: borderColor),
-              Table(
-                columnWidths: const {
-                  0: FlexColumnWidth(1.65),
-                  1: FlexColumnWidth(1),
-                },
-                border: TableBorder(
-                  verticalInside: BorderSide(color: borderColor),
-                  horizontalInside: BorderSide(color: borderColor),
-                ),
-                children: [
-                  TableRow(
-                    decoration: BoxDecoration(color: headerColor),
-                    children: const [
-                      _CopePlanHeaderCell('Daily Activities'),
-                      _CopePlanHeaderCell('Methods', centered: true),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'Reflect on the insights from the Understand phase',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Journal',
-                        icon: Icons.book_rounded,
-                        color: color,
-                        onTap: () => _openTool(
-                          context,
-                          JournalingScreen(appState: context.read<AppState>()),
-                        ),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'Is there some issue you need to let go of?',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Let it go',
-                        icon: Icons.bubble_chart_rounded,
-                        color: Colors.lightBlue.shade600,
-                        onTap: () => _openTool(context, const LetGoScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        "Is there something you've been struggling to accept?",
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Acceptance',
-                        icon: Icons.favorite_rounded,
-                        color: Colors.pink.shade300,
-                        onTap: () =>
-                            _openTool(context, const AcceptanceScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'Is there someone you can forgive now? Or someone you feel ready to ask for forgiveness?',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Forgiveness',
-                        icon: Icons.volunteer_activism_rounded,
-                        color: Colors.orange.shade600,
-                        onTap: () =>
-                            _openTool(context, const ForgivenessScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _CopePlanActivityCell(
-                        'In the evening, meditate on the next steps you can take to further vanquish your anxiety',
-                      ),
-                      _PlanMethodIconCell(
-                        label: 'Meditations',
-                        icon: Icons.self_improvement_rounded,
-                        color: Colors.indigo.shade400,
-                        onTap: () =>
-                            _openTool(context, const MeditationsScreen()),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        HealDailyPlanTable(color: color),
         const SizedBox(height: 32),
         _PlanActionButtons(color: color),
       ],
@@ -1766,7 +1531,7 @@ class _CopePlanHeaderCell extends StatelessWidget {
         style: const TextStyle(
           fontSize: 14,
           fontStyle: FontStyle.italic,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

@@ -1,7 +1,58 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gwen/core/services/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('enables every reminder when a plan is activated', () {
+    const reminders = [
+      DailyReminderSchedule(
+        id: 1,
+        title: 'First',
+        body: 'First reminder',
+        hour: 9,
+        minute: 0,
+      ),
+      DailyReminderSchedule(
+        id: 2,
+        title: 'Second',
+        body: 'Second reminder',
+        hour: 15,
+        minute: 30,
+        isEnabled: true,
+        frequency: 'Several times a week',
+      ),
+    ];
+
+    final enabled = enableAllReminderSchedules(reminders);
+
+    expect(enabled, hasLength(reminders.length));
+    expect(enabled.every((reminder) => reminder.isEnabled), isTrue);
+    expect(enabled.map((reminder) => reminder.id), [1, 2]);
+    expect(enabled.last.frequency, 'Several times a week');
+  });
+
+  test('keeps a reduced reminder list after a reminder is deleted', () async {
+    SharedPreferences.setMockInitialValues({});
+    const remainingReminder = DailyReminderSchedule(
+      id: 2201,
+      title: 'Remaining reminder',
+      body: 'This reminder was not deleted.',
+      hour: 9,
+      minute: 0,
+      isEnabled: true,
+    );
+
+    await NotificationService.instance.savePlanReminderSchedules(
+      'understand',
+      [remainingReminder],
+    );
+    final loaded = await NotificationService.instance
+        .loadPlanReminderSchedules('understand');
+
+    expect(loaded, hasLength(1));
+    expect(loaded.single.id, remainingReminder.id);
+  });
+
   test('builds three personalized Cope reminders from planning answers', () {
     final reminders = NotificationService.instance.copePlanReminderSchedules(
       frequency: 'Several times a week',

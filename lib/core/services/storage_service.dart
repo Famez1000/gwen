@@ -19,6 +19,11 @@ class StorageService {
       'pending_onboarding_plan_type';
   static const String _keyUserName = 'user_name';
   static const String _keyProfileImageBase64 = 'profile_image_base64';
+  static const String _keyAnxietyPersonaName = 'anxiety_persona_name';
+  static const String _keyAnxietyPersonaDescription =
+      'anxiety_persona_description';
+  static const String _keyAnxietyPersonaImageBase64 =
+      'anxiety_persona_image_base64';
   static const String _keyMoodRealityText = 'mood_reality_text';
   static const String _keyMoodFavoriteSongUrl = 'mood_favorite_song_url';
   static const String _keyHideMoodEntryPopup = 'hide_mood_entry_popup';
@@ -34,9 +39,13 @@ class StorageService {
   static const String _keyReminderSwipeHintSeen = 'reminder_swipe_hint_seen';
   static const String _keyProgressSwipeHintSeen = 'progress_swipe_hint_seen';
   static const String _keyCopeDailyActivityDates = 'cope_daily_activity_dates';
+  static const String _keyUnderstandDailyActivityDates =
+      'understand_daily_activity_dates';
+  static const String _keyHealDailyActivityDates = 'heal_daily_activity_dates';
   static const String _keyCopePlanName = 'cope_plan_name';
   static const String _keyCopePlanNames = 'cope_plan_names';
   static const String _keyUnderstandPlanNames = 'understand_plan_names';
+  static const String _keyUnderstandPlanFeeling = 'understand_plan_feeling';
   static const String _keyHealPlanNames = 'heal_plan_names';
   static const String _keyHasCopePlan = 'has_cope_plan';
   static const String _keyActivePlanId = 'active_plan_id';
@@ -150,7 +159,7 @@ class StorageService {
 
   // Sound & Haptics preferences
   bool getSoundEnabled() {
-    return _prefs.getBool(_keySoundEnabled) ?? true;
+    return _prefs.getBool(_keySoundEnabled) ?? false;
   }
 
   Future<void> setSoundEnabled(bool enabled) async {
@@ -225,6 +234,30 @@ class StorageService {
 
   Future<void> setProfileImageBase64(String imageBase64) async {
     await _prefs.setString(_keyProfileImageBase64, imageBase64);
+  }
+
+  String getAnxietyPersonaName() {
+    return _prefs.getString(_keyAnxietyPersonaName) ?? '';
+  }
+
+  String getAnxietyPersonaDescription() {
+    return _prefs.getString(_keyAnxietyPersonaDescription) ?? '';
+  }
+
+  String getAnxietyPersonaImageBase64() {
+    return _prefs.getString(_keyAnxietyPersonaImageBase64) ?? '';
+  }
+
+  Future<void> setAnxietyPersona({
+    required String name,
+    required String description,
+    required String imageBase64,
+  }) async {
+    await Future.wait([
+      _prefs.setString(_keyAnxietyPersonaName, name),
+      _prefs.setString(_keyAnxietyPersonaDescription, description),
+      _prefs.setString(_keyAnxietyPersonaImageBase64, imageBase64),
+    ]);
   }
 
   String getMoodRealityText() {
@@ -382,6 +415,58 @@ class StorageService {
     );
   }
 
+  Map<String, List<String>> getUnderstandDailyActivityDates() {
+    final jsonText = _prefs.getString(_keyUnderstandDailyActivityDates);
+    if (jsonText == null) return {};
+
+    try {
+      final decoded = Map<String, dynamic>.from(jsonDecode(jsonText) as Map);
+      return decoded.map(
+        (key, value) => MapEntry(
+          key,
+          (value as List<dynamic>).map((date) => date.toString()).toList(),
+        ),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setUnderstandDailyActivityDates(
+    Map<String, List<String>> activityDates,
+  ) async {
+    await _prefs.setString(
+      _keyUnderstandDailyActivityDates,
+      jsonEncode(activityDates),
+    );
+  }
+
+  Map<String, List<String>> getHealDailyActivityDates() {
+    final jsonText = _prefs.getString(_keyHealDailyActivityDates);
+    if (jsonText == null) return {};
+
+    try {
+      final decoded = Map<String, dynamic>.from(jsonDecode(jsonText) as Map);
+      return decoded.map(
+        (key, value) => MapEntry(
+          key,
+          (value as List<dynamic>).map((date) => date.toString()).toList(),
+        ),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setHealDailyActivityDates(
+    Map<String, List<String>> activityDates,
+  ) async {
+    await _prefs.setString(
+      _keyHealDailyActivityDates,
+      jsonEncode(activityDates),
+    );
+  }
+
   String getCopePlanName() {
     return _prefs.getString(_keyCopePlanName) ?? 'Cope plan';
   }
@@ -400,6 +485,14 @@ class StorageService {
 
   Future<void> setUnderstandPlanNames(List<String> names) async {
     await _prefs.setStringList(_keyUnderstandPlanNames, names);
+  }
+
+  String getUnderstandPlanFeeling() {
+    return _prefs.getString(_keyUnderstandPlanFeeling) ?? '';
+  }
+
+  Future<void> setUnderstandPlanFeeling(String feeling) async {
+    await _prefs.setString(_keyUnderstandPlanFeeling, feeling);
   }
 
   List<String> getHealPlanNames() {

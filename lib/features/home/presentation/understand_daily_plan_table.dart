@@ -4,36 +4,48 @@ import 'package:provider/provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../affirmations/presentation/affirmations_screen.dart';
-import '../../grounding/presentation/grounding_screen.dart';
-import '../../meditations/presentation/meditations_screen.dart';
+import '../../journaling/presentation/journaling_screen.dart';
+import '../../learning/presentation/ask_yourself_screen.dart';
+import '../../learning/presentation/body_signals_screen.dart';
+import '../../learning/presentation/patterns_screen.dart';
+import '../../learning/presentation/triggers_screen.dart';
 import '../../reminders/presentation/reminders_screen.dart';
-import '../../sanctuary/presentation/anxiety_persona_screen.dart';
-import '../../sanctuary/presentation/leaf_exercise_screen.dart';
-import '../../sanctuary/presentation/my_truth_editor.dart';
 
-class CopeDailyPlanTable extends StatefulWidget {
+class UnderstandDailyPlanTable extends StatefulWidget {
   final Color color;
+  final String feeling;
 
-  const CopeDailyPlanTable({super.key, required this.color});
+  const UnderstandDailyPlanTable({
+    super.key,
+    required this.color,
+    required this.feeling,
+  });
 
   @override
-  State<CopeDailyPlanTable> createState() => _CopeDailyPlanTableState();
+  State<UnderstandDailyPlanTable> createState() =>
+      _UnderstandDailyPlanTableState();
 }
 
-class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
+class _UnderstandDailyPlanTableState extends State<UnderstandDailyPlanTable> {
   late final Future<List<DailyReminderSchedule>> _remindersFuture;
 
   @override
   void initState() {
     super.initState();
     _remindersFuture = NotificationService.instance.loadPlanReminderSchedules(
-      'cope',
+      'understand',
     );
   }
 
-  void _openTool(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  Future<void> _openTool(Widget screen, {String? activity}) async {
+    if (activity != null) {
+      await context.read<AppState>().setUnderstandActivityCompletedToday(
+        activity,
+        true,
+      );
+      if (!mounted) return;
+    }
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -57,6 +69,9 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
             ? widget.color.withAlpha(65)
             : const Color(0xFFDCE8C4);
         final reminderCount = snapshot.data!.length;
+        final feeling = widget.feeling.trim().isEmpty
+            ? 'what you feel'
+            : widget.feeling.trim().toLowerCase();
 
         return GlassCard(
           padding: EdgeInsets.zero,
@@ -67,7 +82,7 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
             children: [
               _MessageRow(
                 text:
-                    'Gwyn has created $reminderCount reminders for you to help you with this',
+                    'Gwyn has created $reminderCount reminders for you to help you understand',
                 linkText: '(click to open)',
                 onLinkTap: () => _openTool(const RemindersScreen()),
               ),
@@ -85,22 +100,22 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
                   TableRow(
                     decoration: BoxDecoration(color: headerColor),
                     children: const [
-                      _HeaderCell('Planned Activities'),
+                      _HeaderCell('Daily Activities'),
                       _HeaderCell('Methods', centered: true),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const _ActivityCell(
-                        'Write down your truth in this app and on a piece of paper and always carry it around',
+                      _ActivityCell(
+                        "In the morning, reflect in the app's Journal page on why you often feel $feeling",
                       ),
                       _MethodCell(
-                        label: 'My Truth',
-                        icon: Icons.fact_check_rounded,
-                        color: Colors.green.shade600,
-                        onTap: () => showMyTruthEditor(
-                          context,
-                          context.read<AppState>(),
+                        label: 'Body Signals',
+                        icon: Icons.monitor_heart_rounded,
+                        color: Colors.pink.shade300,
+                        onTap: () => _openTool(
+                          const BodySignalsScreen(),
+                          activity: AppState.understandBodySignalsActivity,
                         ),
                       ),
                     ],
@@ -108,16 +123,15 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
                   TableRow(
                     children: [
                       const _ActivityCell(
-                        'Give your anxious thoughts a face and a name so you can separate them from yourself',
+                        'The moment your anxious feeling gets triggered, write down what exactly that trigger was',
                       ),
                       _MethodCell(
-                        label: 'Create persona',
-                        icon: Icons.theater_comedy_rounded,
+                        label: 'Triggers',
+                        icon: Icons.bolt_rounded,
                         color: Colors.amber.shade700,
                         onTap: () => _openTool(
-                          AnxietyPersonaScreen(
-                            appState: context.read<AppState>(),
-                          ),
+                          const TriggersScreen(),
+                          activity: AppState.understandTriggersActivity,
                         ),
                       ),
                     ],
@@ -125,54 +139,48 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
                   TableRow(
                     children: [
                       const _ActivityCell(
-                        'In the morning start with affirmations to shape a positive mindset for the day',
+                        'Find the patterns that lead up to the anxiety',
                       ),
                       _MethodCell(
-                        label: 'Affirmations',
-                        icon: Icons.record_voice_over_rounded,
-                        color: Colors.blue.shade500,
-                        onTap: () => _openTool(const AffirmationsScreen()),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _ActivityCell(
-                        'Around noon do a grounding exercise to reduce stress',
-                      ),
-                      _MethodCell(
-                        label: 'Grounding',
-                        icon: Icons.filter_center_focus_rounded,
-                        color: Theme.of(context).colorScheme.secondary,
-                        onTap: () => _openTool(
-                          GroundingScreen(appState: context.read<AppState>()),
-                        ),
-                      ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const _ActivityCell(
-                        'In the evening do a meditation when there is time to relax',
-                      ),
-                      _MethodCell(
-                        label: 'Meditations',
-                        icon: Icons.self_improvement_rounded,
+                        label: 'Patterns',
+                        icon: Icons.insights_rounded,
                         color: Colors.indigo.shade400,
-                        onTap: () => _openTool(const MeditationsScreen()),
+                        onTap: () => _openTool(
+                          const PatternsScreen(),
+                          activity: AppState.understandPatternsActivity,
+                        ),
                       ),
                     ],
                   ),
                   TableRow(
                     children: [
                       const _ActivityCell(
-                        'Throughout the day, distract your mind whenever anxiety rises',
+                        'In the evening, while playing meditative music, ask yourself directed questions to better understand what is causing the anxiety.',
                       ),
                       _MethodCell(
-                        label: 'Leaf Exercise',
-                        icon: Icons.eco_rounded,
-                        color: Colors.green.shade600,
-                        onTap: () => _openTool(const LeafExerciseScreen()),
+                        label: 'Ask yourself',
+                        icon: Icons.question_answer_rounded,
+                        color: Colors.teal.shade600,
+                        onTap: () => _openTool(
+                          const AskYourselfScreen(),
+                          activity: AppState.understandAskYourselfActivity,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TableRow(
+                    children: [
+                      const _ActivityCell(
+                        'Throughout the day, notice your thoughts without judging them. They may offer valuable clues about the source of your anxiety.',
+                      ),
+                      _MethodCell(
+                        label: 'Journal',
+                        icon: Icons.book_rounded,
+                        color: widget.color,
+                        onTap: () => _openTool(
+                          JournalingScreen(appState: context.read<AppState>()),
+                          activity: AppState.understandJournalActivity,
+                        ),
                       ),
                     ],
                   ),
@@ -188,10 +196,14 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
 
 class _MessageRow extends StatelessWidget {
   final String text;
-  final String? linkText;
-  final VoidCallback? onLinkTap;
+  final String linkText;
+  final VoidCallback onLinkTap;
 
-  const _MessageRow({required this.text, this.linkText, this.onLinkTap});
+  const _MessageRow({
+    required this.text,
+    required this.linkText,
+    required this.onLinkTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -208,24 +220,23 @@ class _MessageRow extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(text, style: textStyle),
-          if (linkText != null)
-            InkWell(
-              onTap: onLinkTap,
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  linkText!,
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: 14,
-                    height: 1.3,
-                    fontWeight: FontWeight.w900,
-                    decoration: TextDecoration.underline,
-                  ),
+          InkWell(
+            onTap: onLinkTap,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                linkText,
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 14,
+                  height: 1.3,
+                  fontWeight: FontWeight.w900,
+                  decoration: TextDecoration.underline,
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

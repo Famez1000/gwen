@@ -15,7 +15,7 @@ import 'gwyn_puzzle_screen.dart';
 import 'hike_screen.dart';
 import 'leaf_exercise_screen.dart';
 import 'my_truth_editor.dart';
-import 'socialize_screen.dart';
+import 'anxiety_persona_screen.dart';
 
 import 'package:provider/provider.dart';
 
@@ -290,6 +290,20 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                   ],
 
                   _SanctuaryCard(
+                    title: "Create a persona to isolate your anxiety",
+                    desc: appState.hasAnxietyPersona
+                        ? "When anxiety speaks, notice: “Oh, it’s good old ${appState.anxietyPersonaName} again.”"
+                        : "Give your anxious thoughts a face and a name, so you can notice them without becoming them.",
+                    icon: Icons.theater_comedy_rounded,
+                    color: Colors.amber.shade700,
+                    onTap: () => _navigateToScreen(
+                      context,
+                      AnxietyPersonaScreen(appState: appState),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _SanctuaryCard(
                     title: "My Truth",
                     desc:
                         "Write and keep the truths that bring you back to reality during anxious moments.",
@@ -363,16 +377,6 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                       context,
                       BreathingScreen(appState: appState),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _SanctuaryCard(
-                    title: "Socialize",
-                    desc: "Talk with friends to distract your mind.",
-                    icon: Icons.groups_rounded,
-                    color: Colors.blue.shade500,
-                    onTap: () =>
-                        _navigateToScreen(context, const SocializeScreen()),
                   ),
                   const SizedBox(height: 16),
 

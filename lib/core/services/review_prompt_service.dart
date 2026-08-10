@@ -99,4 +99,34 @@ class ReviewPromptService {
       _requestInProgress = false;
     }
   }
+
+  /// Opens a rating surface after an explicit user action in Settings.
+  ///
+  /// This intentionally skips the automatic-prompt eligibility rules because
+  /// the user has asked to rate the app themselves.
+  Future<bool> requestFromSettings() async {
+    final supportedPlatform =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    if (_requestInProgress || kIsWeb || !supportedPlatform) return false;
+
+    _requestInProgress = true;
+    try {
+      if (await _inAppReview.isAvailable()) {
+        await _inAppReview.requestReview();
+        return true;
+      }
+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await _inAppReview.openStoreListing();
+        return true;
+      }
+    } catch (error, stackTrace) {
+      debugPrint('User-initiated review request failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      _requestInProgress = false;
+    }
+    return false;
+  }
 }

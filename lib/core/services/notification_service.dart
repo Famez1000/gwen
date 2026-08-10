@@ -385,12 +385,7 @@ class NotificationService {
                 DailyReminderSchedule.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList();
-      if (normalizedType == 'cope' && schedules.isNotEmpty) {
-        return schedules;
-      }
-      return schedules.length == 3
-          ? schedules
-          : defaultPlanReminderSchedules(normalizedType);
+      return schedules;
     } catch (error) {
       debugPrint('Plan reminder schedule fallback to defaults: $error');
       return defaultPlanReminderSchedules(normalizedType);
@@ -490,6 +485,24 @@ class NotificationService {
       macOS: darwinDetails,
     );
   }
+}
+
+List<DailyReminderSchedule> enableAllReminderSchedules(
+  Iterable<DailyReminderSchedule> reminders,
+) {
+  return reminders
+      .map(
+        (reminder) => DailyReminderSchedule(
+          id: reminder.id,
+          title: reminder.title,
+          body: reminder.body,
+          hour: reminder.hour,
+          minute: reminder.minute,
+          isEnabled: true,
+          frequency: reminder.frequency,
+        ),
+      )
+      .toList();
 }
 
 class DailyReminderSchedule {

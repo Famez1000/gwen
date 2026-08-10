@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/state/app_state.dart';
 import '../../../core/services/gemini_service.dart';
+import '../../../core/services/global_sound_service.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../subscription/application/subscription_gate.dart';
 import '../../subscription/presentation/subscription_screen.dart';
@@ -45,6 +46,17 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
   void initState() {
     super.initState();
     _musicPlayer = AudioPlayer(playerId: 'drawing_guess_music');
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
+    if (GlobalSoundService.instance.isEnabled) {
+      _musicEnabled = true;
+      unawaited(_startMusic());
+    }
+  }
+
+  void _applyGlobalSound() {
+    final enabled = GlobalSoundService.instance.isEnabled;
+    if (mounted) setState(() => _musicEnabled = enabled);
+    unawaited(enabled ? _startMusic() : _musicPlayer.pause());
   }
 
   void _startStroke(DragStartDetails details) {
@@ -317,6 +329,7 @@ class _DrawingGuessScreenState extends State<DrawingGuessScreen> {
 
   @override
   void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
     _replyController.dispose();
     _gwynUiScrollController.dispose();
     _musicPlayer.dispose();

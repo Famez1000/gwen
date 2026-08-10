@@ -64,6 +64,29 @@ void main() {
     expect(find.text('My Cope plan'), findsOneWidget);
     expect(find.text('My Understand plan'), findsOneWidget);
     expect(find.text('My Heal plan'), findsOneWidget);
+    expect(find.text('Persona'), findsOneWidget);
+    for (final label in [
+      'Journal',
+      'Acceptance',
+      'Forgiveness',
+      'Meditations',
+    ]) {
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('heal-progress-scroll')),
+          matching: find.text(label),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(
+      tester
+          .widget<Checkbox>(
+            find.byKey(const ValueKey('Persona-completion-checkbox')),
+          )
+          .value,
+      isFalse,
+    );
     for (final section in ['cope', 'understand', 'heal']) {
       final listView = tester.widget<ListView>(
         find.byKey(ValueKey('$section-progress-scroll')),
@@ -94,5 +117,33 @@ void main() {
 
     expect(find.text('heal plan1'), findsWidgets);
     expect(find.text('Focus'), findsOneWidget);
+  });
+
+  testWidgets('checks Persona automatically after a persona is created', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final appState = AppState();
+    await appState.init();
+    await appState.saveCopePlan(name: 'cope plan1');
+    await appState.setAnxietyPersona(
+      name: 'Anxious Harry',
+      description: 'Always predicts the worst.',
+      imageBase64: '',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProgressScreen(appState: appState)),
+    );
+
+    expect(find.text('Persona'), findsOneWidget);
+    expect(
+      tester
+          .widget<Checkbox>(
+            find.byKey(const ValueKey('Persona-completion-checkbox')),
+          )
+          .value,
+      isTrue,
+    );
   });
 }

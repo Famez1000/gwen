@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../../core/services/global_sound_service.dart';
 
 class GwynPuzzleScreen extends StatefulWidget {
   const GwynPuzzleScreen({super.key});
@@ -12,7 +15,8 @@ class GwynPuzzleScreen extends StatefulWidget {
   State<GwynPuzzleScreen> createState() => _GwynPuzzleScreenState();
 }
 
-class _GwynPuzzleScreenState extends State<GwynPuzzleScreen> {
+class _GwynPuzzleScreenState extends State<GwynPuzzleScreen>
+    with SingleTickerProviderStateMixin {
   static const _gridSize = 4;
   static const _tileCount = _gridSize * _gridSize;
   static const _blankTile = _tileCount - 1;
@@ -20,16 +24,32 @@ class _GwynPuzzleScreenState extends State<GwynPuzzleScreen> {
 
   final Random _random = Random();
   late List<int> _tiles;
+  late final AudioPlayer _musicPlayer;
+  late final AudioPlayer _victoryPlayer;
+  late final AnimationController _confettiController;
   ui.Image? _puzzleImage;
   int _moves = 0;
   bool _completionDialogShowing = false;
+  bool _exampleImageExpanded = false;
+  bool _soundEnabled = false;
+  bool _musicLoaded = false;
 
   @override
   void initState() {
     super.initState();
+    _musicPlayer = AudioPlayer(playerId: 'gwyn_puzzle_music');
+    _victoryPlayer = AudioPlayer(playerId: 'gwyn_puzzle_victory');
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
+    _confettiController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    );
     _tiles = List<int>.generate(_tileCount, (index) => index);
     _shuffle();
     unawaited(_loadPuzzleImage());
+    if (GlobalSoundService.instance.isEnabled) {
+      unawaited(_setSoundEnabled(true));
+    }
   }
 
   Future<void> _loadPuzzleImage() async {
@@ -49,8 +69,16 @@ class _GwynPuzzleScreenState extends State<GwynPuzzleScreen> {
 
   @override
   void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
     _puzzleImage?.dispose();
+    _musicPlayer.dispose();
+    _victoryPlayer.dispose();
+    _confettiController.dispose();
     super.dispose();
+  }
+
+  void _applyGlobalSound() {
+    unawaited(_setSoundEnabled(GlobalSoundService.instance.isEnabled));
   }
 
   void _shuffle() {
@@ -126,29 +154,94 @@ class _GwynPuzzleScreenState extends State<GwynPuzzleScreen> {
   Future<void> _showCompletionDialog() async {
     if (_completionDialogShowing) return;
     _completionDialogShowing = true;
+    if (_soundEnabled) unawaited(_playVictorySound());
+    unawaited(_confettiController.forward(from: 0));
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Puzzle complete!'),
-        content: Text('You restored Gwyn in $_moves moves.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
+      builder: (dialogContext) => Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _confettiController,
+                builder: (context, child) => CustomPaint(
+                  painter: _PuzzleConfettiPainter(
+                    progress: _confettiController.value,
+                  ),
+                ),
+              ),
+            ),
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              _shuffle();
-            },
-            child: const Text('Play again'),
+          AlertDialog(
+            title: const Text('Puzzle complete!'),
+            content: Text('You restored Gwyn in $_moves moves.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  _shuffle();
+                },
+                child: const Text('Play again'),
+              ),
+            ],
           ),
         ],
       ),
     );
 
     _completionDialogShowing = false;
+  }
+
+  Future<void> _playVictorySound() async {
+    try {
+      for (final playbackRate in const [0.85, 1.1, 1.4]) {
+        await _victoryPlayer.play(
+          AssetSource('sounds/bubble_pop.wav'),
+          volume: 0.65,
+        );
+        await _victoryPlayer.setPlaybackRate(playbackRate);
+        await Future<void>.delayed(const Duration(milliseconds: 125));
+      }
+    } catch (error) {
+      debugPrint('[GwynPuzzleScreen] Victory sound failed: $error');
+    }
+  }
+
+  Future<void> _toggleSound() async {
+    await _setSoundEnabled(!_soundEnabled);
+  }
+
+  Future<void> _setSoundEnabled(bool shouldEnable) async {
+    if (mounted) setState(() => _soundEnabled = shouldEnable);
+
+    try {
+      if (!shouldEnable) {
+        await _musicPlayer.pause();
+        return;
+      }
+
+      if (_musicLoaded) {
+        await _musicPlayer.resume();
+      } else {
+        await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+        if (!_soundEnabled) return;
+        await _musicPlayer.play(AssetSource('sounds/puzzle.mp3'), volume: 0.55);
+        _musicLoaded = true;
+      }
+
+      if (!_soundEnabled) await _musicPlayer.pause();
+    } catch (error) {
+      debugPrint('[GwynPuzzleScreen] Music failed: $error');
+      if (mounted && _soundEnabled) {
+        setState(() => _soundEnabled = false);
+      }
+    }
   }
 
   @override
@@ -161,49 +254,91 @@ class _GwynPuzzleScreenState extends State<GwynPuzzleScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: _soundEnabled ? 'Mute' : 'Turn sound on',
+            onPressed: _toggleSound,
+            icon: Icon(
+              _soundEnabled
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    _imageAsset,
-                    width: 72,
-                    height: 72,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Restore Gwyn’s picture',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: _exampleImageExpanded
+                  ? Semantics(
+                      button: true,
+                      label: 'Shrink example image',
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _exampleImageExpanded = false),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Image.asset(_imageAsset, fit: BoxFit.cover),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Tap a tile next to the empty space to slide it.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.35,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white60
-                              : Colors.black54,
+                    )
+                  : Row(
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: 'Enlarge example image',
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _exampleImageExpanded = true),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                _imageAsset,
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Restore Gwyn’s picture',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                'Tap a tile next to the empty space to slide it.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.35,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white60
+                                      : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
             ),
             const SizedBox(height: 20),
             AspectRatio(
@@ -316,6 +451,80 @@ class _GwynPuzzleScreenState extends State<GwynPuzzleScreen> {
         ),
       ),
     );
+  }
+}
+
+class _PuzzleConfettiPainter extends CustomPainter {
+  static const _colors = [
+    Color(0xFFFFC857),
+    Color(0xFFFF6B8A),
+    Color(0xFF6BCB77),
+    Color(0xFF4D96FF),
+    Color(0xFF9B5DE5),
+    Color(0xFFFF8C42),
+  ];
+
+  final double progress;
+
+  const _PuzzleConfettiPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+
+    final random = Random(4831);
+    for (var index = 0; index < 80; index++) {
+      final delay = random.nextDouble() * 0.18;
+      final particleProgress = ((progress - delay) / (1 - delay)).clamp(
+        0.0,
+        1.0,
+      );
+      if (particleProgress <= 0) continue;
+
+      final startX = size.width * 0.5 + (random.nextDouble() - 0.5) * 24;
+      final horizontalTravel =
+          (random.nextDouble() * 2 - 1) * size.width * 0.72;
+      final upwardTravel = size.height * (0.28 + random.nextDouble() * 0.2);
+      final gravity = size.height * (1.08 + random.nextDouble() * 0.32);
+      final easedProgress = Curves.easeOut.transform(particleProgress);
+      final sway =
+          sin(particleProgress * pi * (2 + random.nextDouble() * 3)) * 12;
+      final x = startX + horizontalTravel * easedProgress + sway;
+      final y =
+          size.height * 0.2 -
+          upwardTravel * particleProgress +
+          gravity * particleProgress * particleProgress;
+      final opacity = particleProgress < 0.82
+          ? 1.0
+          : (1 - particleProgress) / 0.18;
+      final color = _colors[index % _colors.length].withAlpha(
+        (opacity * 255).round(),
+      );
+      final width = 6.0 + random.nextDouble() * 6;
+      final height = 3.0 + random.nextDouble() * 5;
+
+      canvas
+        ..save()
+        ..translate(x, y)
+        ..rotate(particleProgress * pi * (2 + random.nextDouble() * 5));
+      if (index.isEven) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: width, height: height),
+            const Radius.circular(2),
+          ),
+          Paint()..color = color,
+        );
+      } else {
+        canvas.drawCircle(Offset.zero, width * 0.42, Paint()..color = color);
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PuzzleConfettiPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 

@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/services/global_sound_service.dart';
+
 class BubblePopScreen extends StatefulWidget {
   const BubblePopScreen({super.key});
 
@@ -36,14 +38,26 @@ class _BubblePopScreenState extends State<BubblePopScreen>
     _musicPlayer = AudioPlayer(playerId: 'bubble_pop_music');
     unawaited(_popPlayer.setReleaseMode(ReleaseMode.stop));
     _ticker = createTicker(_tick)..start();
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
+    if (GlobalSoundService.instance.isEnabled) {
+      _musicEnabled = true;
+      unawaited(_startMusic());
+    }
   }
 
   @override
   void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
     _ticker.dispose();
     _popPlayer.dispose();
     _musicPlayer.dispose();
     super.dispose();
+  }
+
+  void _applyGlobalSound() {
+    final enabled = GlobalSoundService.instance.isEnabled;
+    if (mounted) setState(() => _musicEnabled = enabled);
+    unawaited(enabled ? _startMusic() : _musicPlayer.pause());
   }
 
   void _tick(Duration elapsed) {

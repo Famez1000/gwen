@@ -4,6 +4,7 @@ import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../home/presentation/planning_destination_screen.dart';
 import '../../profile/presentation/my_plans_screen.dart';
+import '../../sanctuary/presentation/anxiety_persona_screen.dart';
 import '../../sanctuary/presentation/my_truth_editor.dart';
 
 class ProgressScreen extends StatefulWidget {
@@ -49,6 +50,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _openAnxietyPersona() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AnxietyPersonaScreen(appState: widget.appState),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _openHealPlanning() async {
     await Navigator.push(
       context,
@@ -72,7 +83,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       context,
       MaterialPageRoute(
         builder: (_) =>
-            SavedPlanDetailScreen.understand(planName: planName, color: color),
+            UnderstandPlanDetailScreen(planName: planName, color: color),
       ),
     );
     if (mounted) setState(() {});
@@ -82,39 +93,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            SavedPlanDetailScreen.heal(planName: planName, color: color),
+        builder: (_) => HealPlanDetailScreen(planName: planName, color: color),
       ),
     );
     if (mounted) setState(() {});
-  }
-
-  List<_AnxietyChartPoint> _monthlyJournalAnxietyPoints() {
-    final today = DateTime.now();
-    final endDate = DateTime(today.year, today.month, today.day);
-    final startDate = endDate.subtract(const Duration(days: 29));
-
-    final points = widget.appState.dailyJournalEntries
-        .map((entry) {
-          final rawDate = entry['date'] as String?;
-          final rawScore = entry['anxietyScore'] as int?;
-          if (rawDate == null || rawScore == null) return null;
-
-          final date = DateTime.tryParse(rawDate);
-          if (date == null) return null;
-
-          final dateOnly = DateTime(date.year, date.month, date.day);
-          if (dateOnly.isBefore(startDate) || dateOnly.isAfter(endDate)) {
-            return null;
-          }
-
-          return _AnxietyChartPoint(date: dateOnly, score: rawScore);
-        })
-        .whereType<_AnxietyChartPoint>()
-        .toList();
-
-    points.sort((a, b) => a.date.compareTo(b.date));
-    return points;
   }
 
   _ProgressMetric _dailyCopeMetric({
@@ -168,13 +150,110 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  void _showDailyCounterHelp(String label, String screenName) {
+  _ProgressMetric _dailyUnderstandMetric({
+    required String activity,
+    required String label,
+    required IconData icon,
+    bool automaticallyTracked = false,
+    String? trackingScreenName,
+  }) {
+    final streak = widget.appState.understandActivityStreak(activity);
+    final completedToday = widget.appState.isUnderstandActivityCompletedToday(
+      activity,
+    );
+    final nextMilestone = streak < 3
+        ? 3
+        : streak < 7
+        ? 7
+        : streak < 14
+        ? 14
+        : 30;
+    final reward = switch (streak) {
+      >= 30 => '🏆 30-day champion reward',
+      >= 14 => '💚 14-day reward earned',
+      >= 7 => '⭐ 7-day reward earned',
+      >= 3 => '🌱 3-day reward earned',
+      _ => 'Next reward: $nextMilestone days',
+    };
+
+    return _ProgressMetric.dailyStreak(
+      icon: icon,
+      label: label,
+      value: '$streak day${streak == 1 ? '' : 's'}',
+      progress: (streak / nextMilestone).clamp(0, 1),
+      goal: reward,
+      isChecked: completedToday,
+      onChecked: automaticallyTracked
+          ? null
+          : (value) async {
+              await widget.appState.setUnderstandActivityCompletedToday(
+                activity,
+                value,
+              );
+              if (mounted) setState(() {});
+            },
+      onHelp: automaticallyTracked
+          ? () => _showDailyCounterHelp(
+              label,
+              trackingScreenName ?? label.replaceFirst('Daily ', ''),
+              planArea: 'Understand plan',
+            )
+          : null,
+    );
+  }
+
+  _ProgressMetric _dailyHealMetric({
+    required String activity,
+    required String label,
+    required IconData icon,
+    required String trackingScreenName,
+  }) {
+    final streak = widget.appState.healActivityStreak(activity);
+    final completedToday = widget.appState.isHealActivityCompletedToday(
+      activity,
+    );
+    final nextMilestone = streak < 3
+        ? 3
+        : streak < 7
+        ? 7
+        : streak < 14
+        ? 14
+        : 30;
+    final reward = switch (streak) {
+      >= 30 => '🏆 30-day champion reward',
+      >= 14 => '💚 14-day reward earned',
+      >= 7 => '⭐ 7-day reward earned',
+      >= 3 => '🌱 3-day reward earned',
+      _ => 'Next reward: $nextMilestone days',
+    };
+
+    return _ProgressMetric.dailyStreak(
+      icon: icon,
+      label: label,
+      value: '$streak day${streak == 1 ? '' : 's'}',
+      progress: (streak / nextMilestone).clamp(0, 1),
+      goal: reward,
+      isChecked: completedToday,
+      onChecked: null,
+      onHelp: () => _showDailyCounterHelp(
+        label,
+        trackingScreenName,
+        planArea: 'Heal plan',
+      ),
+    );
+  }
+
+  void _showDailyCounterHelp(
+    String label,
+    String screenName, {
+    String planArea = 'Cope',
+  }) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('$label counter'),
         content: Text(
-          'The counter increases once when you open the $screenName screen from Cope on a new day. Opening it more than once on the same day still counts as one day. Consecutive days build your streak and unlock rewards.',
+          'The counter increases once when you open the $screenName screen from $planArea on a new day. Opening it more than once on the same day still counts as one day. Consecutive days build your streak and unlock rewards.',
         ),
         actions: [
           FilledButton(
@@ -190,7 +269,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
-    final monthlyAnxietyPoints = _monthlyJournalAnxietyPoints();
     final copeProgress = widget.appState.copePlanNames.isEmpty
         ? [
             _ProgressMetric.action(
@@ -209,30 +287,36 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 if (mounted) setState(() {});
               },
             ),
+            _ProgressMetric.checklist(
+              icon: Icons.theater_comedy_rounded,
+              label: 'Persona',
+              isChecked: widget.appState.hasAnxietyPersona,
+              onTap: _openAnxietyPersona,
+            ),
             _dailyCopeMetric(
               activity: AppState.copeAffirmationsActivity,
-              label: 'Daily Affirmations',
+              label: 'Affirmations',
               icon: Icons.record_voice_over_rounded,
               automaticallyTracked: true,
               trackingScreenName: 'Affirmations',
             ),
             _dailyCopeMetric(
               activity: AppState.copeGroundingActivity,
-              label: 'Daily Grounding',
+              label: 'Grounding',
               icon: Icons.filter_center_focus_rounded,
               automaticallyTracked: true,
               trackingScreenName: 'Grounding',
             ),
             _dailyCopeMetric(
               activity: AppState.copeMeditationsActivity,
-              label: 'Daily Meditations',
+              label: 'Meditations',
               icon: Icons.self_improvement_rounded,
               automaticallyTracked: true,
               trackingScreenName: 'Meditations',
             ),
             _dailyCopeMetric(
               activity: AppState.copeLeafActivity,
-              label: 'Daily mind distraction',
+              label: 'Mind distraction',
               icon: Icons.eco_rounded,
               automaticallyTracked: true,
               trackingScreenName: 'Leaf Exercise',
@@ -247,19 +331,40 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
           ]
         : [
-            _ProgressMetric(
-              icon: Icons.menu_book_rounded,
-              label: 'Journal days',
-              value: '${monthlyAnxietyPoints.length}',
-              progress: monthlyAnxietyPoints.length / 30,
-              goal: 'Last 30 days',
+            _dailyUnderstandMetric(
+              activity: AppState.understandBodySignalsActivity,
+              label: 'Body Signals',
+              icon: Icons.monitor_heart_rounded,
+              automaticallyTracked: true,
+              trackingScreenName: 'Body Signals',
             ),
-            _ProgressMetric(
-              icon: Icons.psychology_alt_rounded,
-              label: 'Reflections',
-              value: '${widget.appState.reflections.length}',
-              progress: widget.appState.reflections.length / 10,
-              goal: 'Goal: 10 reflections',
+            _dailyUnderstandMetric(
+              activity: AppState.understandTriggersActivity,
+              label: 'Triggers',
+              icon: Icons.bolt_rounded,
+              automaticallyTracked: true,
+              trackingScreenName: 'Triggers',
+            ),
+            _dailyUnderstandMetric(
+              activity: AppState.understandPatternsActivity,
+              label: 'Patterns',
+              icon: Icons.insights_rounded,
+              automaticallyTracked: true,
+              trackingScreenName: 'Patterns',
+            ),
+            _dailyUnderstandMetric(
+              activity: AppState.understandAskYourselfActivity,
+              label: 'Ask yourself',
+              icon: Icons.question_answer_rounded,
+              automaticallyTracked: true,
+              trackingScreenName: 'Ask yourself',
+            ),
+            _dailyUnderstandMetric(
+              activity: AppState.understandJournalActivity,
+              label: 'Journal',
+              icon: Icons.menu_book_rounded,
+              automaticallyTracked: true,
+              trackingScreenName: 'Journal',
             ),
           ];
     final healProgress = widget.appState.healPlanNames.isEmpty
@@ -271,19 +376,29 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
           ]
         : [
-            _ProgressMetric(
-              icon: Icons.local_fire_department_rounded,
-              label: 'Current streak',
-              value: '${widget.appState.streakCount} days',
-              progress: widget.appState.streakCount / 7,
-              goal: 'Goal: 7 days',
+            _dailyHealMetric(
+              activity: AppState.healJournalActivity,
+              label: 'Journal',
+              icon: Icons.book_rounded,
+              trackingScreenName: 'Journal',
             ),
-            _ProgressMetric(
-              icon: Icons.insights_rounded,
-              label: 'Progress insights',
-              value: '${widget.appState.progressAnalyses.length}',
-              progress: widget.appState.progressAnalyses.length / 5,
-              goal: 'Goal: 5 insights',
+            _dailyHealMetric(
+              activity: AppState.healAcceptanceActivity,
+              label: 'Acceptance',
+              icon: Icons.favorite_rounded,
+              trackingScreenName: 'Acceptance',
+            ),
+            _dailyHealMetric(
+              activity: AppState.healForgivenessActivity,
+              label: 'Forgiveness',
+              icon: Icons.volunteer_activism_rounded,
+              trackingScreenName: 'Forgiveness',
+            ),
+            _dailyHealMetric(
+              activity: AppState.healMeditationsActivity,
+              label: 'Meditations',
+              icon: Icons.self_improvement_rounded,
+              trackingScreenName: 'Meditations',
             ),
           ];
 
@@ -731,6 +846,7 @@ class _ProgressMetricCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 IgnorePointer(
                   child: Checkbox(
+                    key: ValueKey('${metric.label}-completion-checkbox'),
                     value: metric.isChecked ?? false,
                     onChanged: (_) {},
                     activeColor: color,

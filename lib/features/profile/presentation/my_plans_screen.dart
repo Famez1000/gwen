@@ -1,10 +1,16 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/services/global_sound_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../home/presentation/cope_daily_plan_table.dart';
+import '../../home/presentation/heal_daily_plan_table.dart';
 import '../../home/presentation/planning_destination_screen.dart';
+import '../../home/presentation/understand_daily_plan_table.dart';
 
 class MyPlansScreen extends StatelessWidget {
   final ValueChanged<int>? onDestinationSelected;
@@ -52,10 +58,6 @@ class MyPlansScreen extends StatelessWidget {
         planName: copePlanName,
         icon: Icons.spa_rounded,
         color: primaryColor,
-        isActive: copePlanName != null && appState.isPlanActive(copePlanName),
-        planId: copePlanName == null
-            ? null
-            : appState.copePlanIdForName(copePlanName),
         destinationBuilder: (_) => const CopePlanningScreen(),
         detailBuilder: copePlanName == null
             ? null
@@ -69,16 +71,10 @@ class MyPlansScreen extends StatelessWidget {
         planName: understandPlanName,
         icon: Icons.lightbulb_rounded,
         color: understandColor,
-        isActive:
-            understandPlanName != null &&
-            appState.isUnderstandPlanActive(understandPlanName),
-        planId: understandPlanName == null
-            ? null
-            : appState.understandPlanIdForName(understandPlanName),
         destinationBuilder: (_) => const UnderstandPlanningScreen(),
         detailBuilder: understandPlanName == null
             ? null
-            : (_) => SavedPlanDetailScreen.understand(
+            : (_) => UnderstandPlanDetailScreen(
                 planName: understandPlanName,
                 color: understandColor,
               ),
@@ -86,17 +82,12 @@ class MyPlansScreen extends StatelessWidget {
       _PlanSlotItem(
         category: 'Heal',
         planName: healPlanName,
-        icon: Icons.volunteer_activism_rounded,
+        iconAsset: 'assets/images/resilient-health.png',
         color: healColor,
-        isActive:
-            healPlanName != null && appState.isHealPlanActive(healPlanName),
-        planId: healPlanName == null
-            ? null
-            : appState.healPlanIdForName(healPlanName),
         destinationBuilder: (_) => const HealPlanningScreen(),
         detailBuilder: healPlanName == null
             ? null
-            : (_) => SavedPlanDetailScreen.heal(
+            : (_) => HealPlanDetailScreen(
                 planName: healPlanName,
                 color: healColor,
               ),
@@ -125,13 +116,8 @@ class MyPlansScreen extends StatelessWidget {
                   planName: plan.planName,
                   category: plan.category,
                   icon: plan.icon,
+                  iconAsset: plan.iconAsset,
                   color: plan.color,
-                  isActive: plan.isActive,
-                  onMakeActive: plan.planId == null
-                      ? null
-                      : () => context.read<AppState>().setActivePlan(
-                          plan.planId!,
-                        ),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -220,20 +206,18 @@ class _MyPlansBottomBar extends StatelessWidget {
 class _PlanSlotItem {
   final String? planName;
   final String category;
-  final IconData icon;
+  final IconData? icon;
+  final String? iconAsset;
   final Color color;
-  final bool isActive;
-  final String? planId;
   final WidgetBuilder destinationBuilder;
   final WidgetBuilder? detailBuilder;
 
   const _PlanSlotItem({
     required this.planName,
     required this.category,
-    required this.icon,
+    this.icon,
+    this.iconAsset,
     required this.color,
-    required this.isActive,
-    required this.planId,
     required this.destinationBuilder,
     required this.detailBuilder,
   });
@@ -242,19 +226,17 @@ class _PlanSlotItem {
 class _PlanOverviewCard extends StatelessWidget {
   final String? planName;
   final String category;
-  final IconData icon;
+  final IconData? icon;
+  final String? iconAsset;
   final Color color;
-  final bool isActive;
-  final VoidCallback? onMakeActive;
   final VoidCallback onTap;
 
   const _PlanOverviewCard({
     required this.planName,
     required this.category,
-    required this.icon,
+    this.icon,
+    this.iconAsset,
     required this.color,
-    required this.isActive,
-    required this.onMakeActive,
     required this.onTap,
   });
 
@@ -281,11 +263,13 @@ class _PlanOverviewCard extends StatelessWidget {
                   color: color.withAlpha(28),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  hasPlan ? icon : Icons.add_circle_outline_rounded,
-                  color: color,
-                  size: 25,
-                ),
+                child: hasPlan && iconAsset != null
+                    ? ImageIcon(AssetImage(iconAsset!), color: color, size: 25)
+                    : Icon(
+                        hasPlan ? icon : Icons.add_circle_outline_rounded,
+                        color: color,
+                        size: 25,
+                      ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -316,26 +300,6 @@ class _PlanOverviewCard extends StatelessWidget {
                             : Colors.black87,
                       ),
                     ),
-                    if (hasPlan) ...[
-                      const SizedBox(height: 7),
-                      if (isActive)
-                        _PlanStatusBadge(isActive: true, color: color)
-                      else
-                        TextButton(
-                          onPressed: onMakeActive,
-                          style: TextButton.styleFrom(
-                            foregroundColor: color,
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 30),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            textStyle: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          child: const Text('Make active'),
-                        ),
-                    ],
                   ],
                 ),
               ),
@@ -508,6 +472,332 @@ class CopePlanDetailScreen extends StatefulWidget {
 
 class _CopePlanDetailScreenState extends State<CopePlanDetailScreen> {
   late String _planName;
+  late final AudioPlayer _musicPlayer;
+  bool _musicMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _planName = widget.planName;
+    _musicPlayer = AudioPlayer(playerId: 'cope_plan_music');
+    _musicMuted = !GlobalSoundService.instance.isEnabled;
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
+    unawaited(_startMusic());
+  }
+
+  void _applyGlobalSound() {
+    final enabled = GlobalSoundService.instance.isEnabled;
+    if (mounted) setState(() => _musicMuted = !enabled);
+    unawaited(_musicPlayer.setVolume(enabled ? 0.5 : 0));
+  }
+
+  Future<void> _startMusic() async {
+    try {
+      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+      await _musicPlayer.play(
+        AssetSource('sounds/cope-plan.mp3'),
+        volume: _musicMuted ? 0 : 0.5,
+      );
+    } catch (error) {
+      debugPrint('[CopePlanDetailScreen] Music failed: $error');
+    }
+  }
+
+  Future<void> _toggleMusicMute() async {
+    final shouldMute = !_musicMuted;
+    setState(() => _musicMuted = shouldMute);
+    try {
+      await _musicPlayer.setVolume(shouldMute ? 0 : 0.5);
+    } catch (error) {
+      debugPrint('[CopePlanDetailScreen] Music mute failed: $error');
+    }
+  }
+
+  @override
+  void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
+    _musicPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final planId = appState.copePlanIdForName(_planName);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_planName),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _toggleMusicMute,
+            icon: Icon(
+              _musicMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+            ),
+            color: Colors.grey,
+            tooltip: _musicMuted ? 'Unmute music' : 'Mute music',
+          ),
+          IconButton(
+            onPressed: () async {
+              final nextName = await _editPlanTitle(
+                context,
+                planId: planId,
+                planName: _planName,
+              );
+              if (nextName != null && mounted) {
+                setState(() => _planName = nextName);
+              }
+            },
+            icon: const Icon(Icons.edit_outlined),
+            color: Colors.grey,
+            tooltip: 'Edit plan title',
+          ),
+          IconButton(
+            onPressed: () => _confirmDeletePlan(
+              context,
+              planId: planId,
+              planName: _planName,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded),
+            color: Colors.grey,
+            tooltip: 'Delete plan',
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Coping with anxiety is all about reminding yourself that you are safe',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            CopeDailyPlanTable(color: widget.color),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyPlansScreen()),
+                  );
+                },
+                icon: const Icon(Icons.route_rounded),
+                label: const Text('My Plans'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: widget.color,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class UnderstandPlanDetailScreen extends StatefulWidget {
+  final String planName;
+  final Color color;
+
+  const UnderstandPlanDetailScreen({
+    super.key,
+    required this.planName,
+    required this.color,
+  });
+
+  @override
+  State<UnderstandPlanDetailScreen> createState() =>
+      _UnderstandPlanDetailScreenState();
+}
+
+class _UnderstandPlanDetailScreenState
+    extends State<UnderstandPlanDetailScreen> {
+  late String _planName;
+  late final AudioPlayer _musicPlayer;
+  bool _musicMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _planName = widget.planName;
+    _musicPlayer = AudioPlayer(playerId: 'understand_plan_music');
+    _musicMuted = !GlobalSoundService.instance.isEnabled;
+    GlobalSoundService.instance.enabled.addListener(_applyGlobalSound);
+    unawaited(_startMusic());
+  }
+
+  void _applyGlobalSound() {
+    final enabled = GlobalSoundService.instance.isEnabled;
+    if (mounted) setState(() => _musicMuted = !enabled);
+    unawaited(_musicPlayer.setVolume(enabled ? 0.5 : 0));
+  }
+
+  Future<void> _startMusic() async {
+    try {
+      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+      await _musicPlayer.play(
+        AssetSource('sounds/understand-plan.mp3'),
+        volume: _musicMuted ? 0 : 0.5,
+      );
+    } catch (error) {
+      debugPrint('[UnderstandPlanDetailScreen] Music failed: $error');
+    }
+  }
+
+  Future<void> _toggleMusicMute() async {
+    final shouldMute = !_musicMuted;
+    setState(() => _musicMuted = shouldMute);
+    try {
+      await _musicPlayer.setVolume(shouldMute ? 0 : 0.5);
+    } catch (error) {
+      debugPrint('[UnderstandPlanDetailScreen] Music mute failed: $error');
+    }
+  }
+
+  @override
+  void dispose() {
+    GlobalSoundService.instance.enabled.removeListener(_applyGlobalSound);
+    _musicPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final isActive = appState.isUnderstandPlanActive(_planName);
+    final planId = appState.understandPlanIdForName(_planName);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_planName),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _toggleMusicMute,
+            icon: Icon(
+              _musicMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+            ),
+            color: Colors.grey,
+            tooltip: _musicMuted ? 'Unmute music' : 'Mute music',
+          ),
+          IconButton(
+            onPressed: () async {
+              final nextName = await _editPlanTitle(
+                context,
+                planId: planId,
+                planName: _planName,
+              );
+              if (nextName != null && mounted) {
+                setState(() => _planName = nextName);
+              }
+            },
+            icon: const Icon(Icons.edit_outlined),
+            color: Colors.grey,
+            tooltip: 'Edit plan title',
+          ),
+          IconButton(
+            onPressed: () => _confirmDeletePlan(
+              context,
+              planId: planId,
+              planName: _planName,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded),
+            color: Colors.grey,
+            tooltip: 'Delete plan',
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 18),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Use these activities to gradually understand the reasons for your anxiety',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  _PlanStatusBadge(isActive: isActive, color: widget.color),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            UnderstandDailyPlanTable(
+              color: widget.color,
+              feeling: appState.understandPlanFeeling,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyPlansScreen()),
+                  );
+                },
+                icon: const Icon(Icons.route_rounded),
+                label: const Text('My Plans'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: widget.color,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HealPlanDetailScreen extends StatefulWidget {
+  final String planName;
+  final Color color;
+
+  const HealPlanDetailScreen({
+    super.key,
+    required this.planName,
+    required this.color,
+  });
+
+  @override
+  State<HealPlanDetailScreen> createState() => _HealPlanDetailScreenState();
+}
+
+class _HealPlanDetailScreenState extends State<HealPlanDetailScreen> {
+  late String _planName;
 
   @override
   void initState() {
@@ -518,8 +808,7 @@ class _CopePlanDetailScreenState extends State<CopePlanDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final isActive = appState.isPlanActive(_planName);
-    final planId = appState.copePlanIdForName(_planName);
+    final planId = appState.healPlanIdForName(_planName);
 
     return Scaffold(
       appBar: AppBar(
@@ -561,34 +850,21 @@ class _CopePlanDetailScreenState extends State<CopePlanDetailScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Daily activities',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
+                  Expanded(
+                    child: Text(
+                      'Use these activities to slowly vanquish your anxiety',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
-                      _PlanStatusBadge(isActive: isActive, color: widget.color),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Coping with anxiety is all about reminding yourself that you are safe',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      height: 1.35,
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-            CopeDailyPlanTable(color: widget.color),
+            HealDailyPlanTable(color: widget.color),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -623,23 +899,6 @@ class SavedPlanDetailScreen extends StatefulWidget {
   final IconData icon;
   final Color color;
   final List<_PlanPreviewSection> _sections;
-
-  const SavedPlanDetailScreen.understand({
-    super.key,
-    required this.planName,
-    required this.color,
-  }) : category = 'Understand',
-       icon = Icons.lightbulb_rounded,
-       _sections = const [
-         _PlanPreviewSection('Focus', [
-           'Journal anxious moments.',
-           'Find thought-feeling patterns.',
-           'Use meditation to listen inward.',
-         ]),
-         _PlanPreviewSection('Aim', [
-           'Aha, now I know what causes my anxiety.',
-         ]),
-       ];
 
   const SavedPlanDetailScreen.heal({
     super.key,

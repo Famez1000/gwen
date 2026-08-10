@@ -67,15 +67,19 @@ class _RemindersScreenState extends State<RemindersScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  bool _isAspectActive(AppState appState, String aspect) {
+  bool _hasAspectPlan(AppState appState, String aspect) {
     return switch (aspect) {
-      'cope' => appState.copePlanNames.any(appState.isPlanActive),
-      'understand' => appState.understandPlanNames.any(
-        appState.isUnderstandPlanActive,
-      ),
-      'heal' => appState.healPlanNames.any(appState.isHealPlanActive),
+      'cope' => appState.copePlanNames.isNotEmpty,
+      'understand' => appState.understandPlanNames.isNotEmpty,
+      'heal' => appState.healPlanNames.isNotEmpty,
       _ => false,
     };
+  }
+
+  bool _isAspectActive(AppState appState, String aspect) {
+    return _hasAspectPlan(appState, aspect) &&
+        (_remindersByAspect[aspect]?.any((reminder) => reminder.isEnabled) ??
+            false);
   }
 
   Future<void> _syncAndScheduleReminders() async {
@@ -83,7 +87,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
     for (final aspectEntry in _remindersByAspect.entries) {
       final reminders = aspectEntry.value;
-      if (!_isAspectActive(appState, aspectEntry.key)) {
+      if (!_hasAspectPlan(appState, aspectEntry.key)) {
         var changed = false;
         for (final reminder in reminders) {
           if (!reminder.isEnabled) continue;
@@ -118,8 +122,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final reminders = _remindersByAspect[aspect];
     if (reminders == null || index >= reminders.length) return;
 
-    if (value && !_isAspectActive(context.read<AppState>(), aspect)) {
-      await _showInactivePlanDialog(aspect);
+    if (value && !_hasAspectPlan(context.read<AppState>(), aspect)) {
+      await _showMissingPlanDialog(aspect);
       return;
     }
 
@@ -148,7 +152,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
     );
   }
 
-  Future<void> _showInactivePlanDialog(String aspect) async {
+  Future<void> _showMissingPlanDialog(String aspect) async {
     final planName = switch (aspect) {
       'cope' => 'Cope',
       'understand' => 'Understand',
@@ -159,9 +163,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Plan not active'),
+        title: const Text('Plan not found'),
         content: Text(
-          'This reminder cannot be enabled because the $planName plan is not active. Make that plan active first.',
+          'Create a $planName plan before activating its reminders.',
         ),
         actions: [
           FilledButton(
@@ -175,29 +179,28 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
   Future<void> _toggleAspectActivation(String aspect) async {
     final appState = context.read<AppState>();
-    if (_isAspectActive(appState, aspect)) {
-      await appState.deactivateActivePlan();
-    } else {
-      final planId = switch (aspect) {
-        'cope' when appState.copePlanNames.isNotEmpty =>
-          appState.copePlanIdForName(appState.copePlanNames.first),
-        'understand' when appState.understandPlanNames.isNotEmpty =>
-          appState.understandPlanIdForName(appState.understandPlanNames.first),
-        'heal' when appState.healPlanNames.isNotEmpty =>
-          appState.healPlanIdForName(appState.healPlanNames.first),
-        _ => null,
-      };
-      if (planId == null) return;
-      await appState.setActivePlan(planId);
+    if (!_hasAspectPlan(appState, aspect)) {
+      await _showMissingPlanDialog(aspect);
+      return;
     }
 
+    final isActivating = !_isAspectActive(appState, aspect);
+    final reminders = _remindersByAspect[aspect];
+    if (reminders == null) return;
+
+    for (final reminder in reminders) {
+      reminder.isEnabled = isActivating;
+    }
+    await _saveReminderSchedules(aspect);
+
     await _syncAndScheduleReminders();
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _editReminder(String aspect, int index) async {
-    if (!_isAspectActive(context.read<AppState>(), aspect)) {
-      await _showInactivePlanDialog(aspect);
+    if (!_hasAspectPlan(context.read<AppState>(), aspect)) {
+      await _showMissingPlanDialog(aspect);
       return;
     }
 
@@ -206,11 +209,31 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final reminder = reminders[index];
     final updated = await showDialog<_ReminderEditResult>(
       context: context,
-      builder: (_) =>
-          _EditReminderDialog(reminder: reminder, allowDelete: false),
+      builder: (_) => _EditReminderDialog(reminder: reminder),
     );
 
     if (updated == null || !mounted) return;
+
+    if (updated.shouldDelete) {
+      setState(() => reminders.removeAt(index));
+      await _saveReminderSchedules(aspect);
+      await NotificationService.instance.cancelReminder(reminder.id);
+
+      for (final entry in reminders.indexed.where(
+        (entry) => entry.$2.isEnabled,
+      )) {
+        await NotificationService.instance.schedulePlanReminder(
+          entry.$2.toSchedule(),
+          position: entry.$1,
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reminder deleted')));
+      return;
+    }
 
     setState(() {
       reminder.title = updated.title;
@@ -227,11 +250,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
         position: index,
       );
     }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Reminder updated')));
   }
 
   String _formatReminderTime(TimeOfDay time) {
@@ -462,9 +480,8 @@ class _ReminderAspectSection extends StatelessWidget {
 
 class _EditReminderDialog extends StatefulWidget {
   final _ReminderItem reminder;
-  final bool allowDelete;
 
-  const _EditReminderDialog({required this.reminder, this.allowDelete = true});
+  const _EditReminderDialog({required this.reminder});
 
   @override
   State<_EditReminderDialog> createState() => _EditReminderDialogState();
@@ -601,14 +618,11 @@ class _EditReminderDialogState extends State<_EditReminderDialog> {
         ),
       ),
       actions: [
-        if (widget.allowDelete) ...[
-          TextButton(
-            onPressed: _delete,
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-          const Spacer(),
-        ],
+        TextButton(
+          onPressed: _delete,
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete'),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),

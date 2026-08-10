@@ -173,7 +173,9 @@ class _JournalingScreenState extends State<JournalingScreen> {
             widget.appState.getDailyJournalEntryForDate(DateTime.now()) != null;
 
         return Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: widget.onBack == null
+              ? Theme.of(context).scaffoldBackgroundColor
+              : Colors.transparent,
           body: SafeArea(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -338,7 +340,7 @@ class _JournalingScreenState extends State<JournalingScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Recent entries (three months max)',
+                  'Recent entries (three months period)',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

@@ -9,6 +9,7 @@ import '../../affirmations/presentation/affirmations_screen.dart';
 import '../../breathing/presentation/breathing_screen.dart';
 import '../../grounding/presentation/grounding_screen.dart';
 import '../../meditations/presentation/meditations_screen.dart';
+import '../../sanctuary/presentation/anxiety_persona_screen.dart';
 import '../../sanctuary/presentation/leaf_exercise_screen.dart';
 import '../../subscription/application/subscription_gate.dart';
 
@@ -409,9 +410,10 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
               onTap: () => _openExercise(GroundingScreen(appState: _appState)),
             ),
             _ExerciseIconButton(
-              icon: Icons.self_improvement_rounded,
-              label: 'Meditation',
-              onTap: () => _openExercise(const MeditationsScreen()),
+              icon: Icons.theater_comedy_rounded,
+              label: 'Persona',
+              onTap: () =>
+                  _openExercise(AnxietyPersonaScreen(appState: _appState)),
             ),
           ],
         ),

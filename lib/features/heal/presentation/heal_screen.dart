@@ -442,64 +442,6 @@ class _HealScreenState extends State<HealScreen> {
                     const SizedBox(height: 16),
                   ],
                   GestureDetector(
-                    onTap: () => _openSurvivalModeSupport(context),
-                    child: GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.withAlpha(31),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.health_and_safety_rounded,
-                              color: Colors.teal.shade500,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          Flexible(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Get out of survival mode',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    letterSpacing: 0.1,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Help your nervous system feel safer with one gentle next step.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark
-                                        ? Colors.white60
-                                        : Colors.black.withAlpha(153),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: isDark
-                                ? Colors.white30
-                                : Colors.black.withAlpha(77),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
                     onTap: () => _openAcceptance(context),
                     child: GlassCard(
                       padding: const EdgeInsets.all(20),
@@ -651,6 +593,64 @@ class _HealScreenState extends State<HealScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Practice gently releasing what you no longer need to carry.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : Colors.black.withAlpha(153),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: isDark
+                                ? Colors.white30
+                                : Colors.black.withAlpha(77),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => _openSurvivalModeSupport(context),
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withAlpha(31),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.health_and_safety_rounded,
+                              color: Colors.teal.shade500,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Get out of survival mode',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Help your nervous system feel safer with one gentle next step.',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isDark

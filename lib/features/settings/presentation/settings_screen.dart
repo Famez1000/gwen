@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/state/app_state.dart';
+import '../../../core/services/review_prompt_service.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 import '../../onboarding/presentation/personalized_onboarding_screen.dart';
@@ -18,8 +19,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const _showOnboardingTrackCard = false;
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  bool _requestingReview = false;
 
   @override
   void initState() {
@@ -151,6 +155,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _rateApp() async {
+    if (_requestingReview) return;
+    setState(() => _requestingReview = true);
+
+    final opened = await ReviewPromptService.instance.requestFromSettings();
+    if (!mounted) return;
+    setState(() => _requestingReview = false);
+
+    if (!opened) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Rating is not available on this device right now.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -198,47 +219,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
               GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Onboarding track',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Choose which onboarding new users see on this device.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white60 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildOnboardingTrackButton(
-                          OnboardingTrack.classic,
-                          'Classic',
-                          primaryColor,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildOnboardingTrackButton(
-                          OnboardingTrack.personalized,
-                          'Personalized',
-                          primaryColor,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _previewSelectedOnboarding,
-                      icon: const Icon(Icons.visibility_rounded),
-                      label: const Text('Preview selected onboarding'),
-                    ),
-                  ],
+                padding: EdgeInsets.zero,
+                child: SwitchListTile.adaptive(
+                  value: widget.appState.soundEnabled,
+                  onChanged: (enabled) async {
+                    await widget.appState.setSoundEnabled(enabled);
+                    if (mounted) setState(() {});
+                  },
+                  secondary: Icon(
+                    widget.appState.soundEnabled
+                        ? Icons.volume_up_rounded
+                        : Icons.volume_off_rounded,
+                    color: primaryColor,
+                  ),
+                  title: const Text(
+                    'Sound',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    widget.appState.soundEnabled
+                        ? 'On — sounds throughout the app are unmuted'
+                        : 'Off — all sounds throughout the app are muted',
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -327,6 +329,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: OutlinedButton.icon(
+                  onPressed: _requestingReview ? null : _rateApp,
+                  icon: _requestingReview
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.star_rate_rounded),
+                  label: const Text('Rate this app'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -346,6 +369,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              if (_showOnboardingTrackCard) ...[
+                GlassCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Onboarding track',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Choose which onboarding new users see on this device.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildOnboardingTrackButton(
+                            OnboardingTrack.classic,
+                            'Classic',
+                            primaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildOnboardingTrackButton(
+                            OnboardingTrack.personalized,
+                            'Personalized',
+                            primaryColor,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _previewSelectedOnboarding,
+                        icon: const Icon(Icons.visibility_rounded),
+                        label: const Text('Preview selected onboarding'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
             ],
           ),
         ),

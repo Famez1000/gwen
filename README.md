@@ -2,19 +2,12 @@
 
 A new Flutter project.
 
-## Local Firebase setup
+## Firebase
 
-Firebase client configuration is intentionally not stored in Git. Before
-running the app locally:
-
-1. Install and sign in to the Firebase and FlutterFire CLIs.
-2. Run `flutterfire configure` for the `mijnfb-c0a3b` Firebase project.
-3. Confirm that `lib/firebase_options.dart` and
-   `android/app/google-services.json` were generated locally.
-
-Keep both generated files untracked. Restrict Android Firebase API keys to the
-app package and signing certificate, and restrict iOS keys to the app bundle
-identifier in Google Cloud Console.
+The mobile app does not currently initialize Firebase. Firebase App Check can
+be added later together with new, platform-restricted client configuration.
+Generated `firebase_options.dart` and `google-services.json` files remain
+ignored and must not be committed.
 
 ## Getting Started
 

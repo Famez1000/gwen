@@ -49,8 +49,6 @@ dependencies:
   youtube_player_flutter: ^10.0.1
   image_picker: ^1.2.3
   in_app_review: ^2.0.12
-  firebase_core: ^4.13.0
-  firebase_app_check: ^0.4.6
 
 dev_dependencies:
   flutter_test:

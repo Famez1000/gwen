@@ -3,19 +3,33 @@ workflows:
     name: iOS Release
     instance_type: mac_mini_m2
     max_build_duration: 60
+
+    integrations:
+      app_store_connect: Appstore_key
+
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
+
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: nl.mlmasters.anxietyslayer
+
     cache:
       cache_paths:
         - ~/.pub-cache
         - ~/Library/Caches/CocoaPods
+
     scripts:
       - name: Get Flutter packages
-        script: flutter pub get
+        script: |
+          flutter pub get
+
       - name: Generate Flutter iOS configuration
-        script: flutter build ios --config-only --no-codesign
+        script: |
+          flutter build ios --config-only --no-codesign
+
       - name: Install CocoaPods dependencies
         script: |
           if [ -f ios/Podfile ]; then
@@ -24,18 +38,21 @@ workflows:
           else
             echo "No ios/Podfile found; skipping CocoaPods install."
           fi
-      - name: Inspect iOS project files
+
+      - name: Set up code signing
         script: |
-          pwd
-          ls -la ios
-          find ios -maxdepth 4 -name "*.xcscheme" -print
-      - name: List iOS project and workspace schemes
+          xcode-project use-profiles
+
+      - name: Build signed IPA
         script: |
-          xcodebuild -list -project ios/Runner.xcodeproj
-          xcodebuild -list -workspace ios/Runner.xcworkspace
-      - name: Build unsigned iOS release
-        script: >
-          flutter build ios --release --no-codesign -v
-          --dart-define=GWEN_AI_FUNCTION_URL=$GWEN_AI_FUNCTION_URL
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist \
+            --dart-define=GWEN_AI_FUNCTION_URL=$GWEN_AI_FUNCTION_URL
+
     artifacts:
-      - build/ios/iphoneos/Runner.app
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration

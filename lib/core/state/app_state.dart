@@ -1187,11 +1187,15 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> activateStoreSubscription() async {
-    if (_storeSubscriptionActive) return;
+    await setStoreSubscriptionActive(true);
+  }
 
-    _storeSubscriptionActive = true;
-    await _storage.setStoreSubscriptionActive(true);
-    await _unlockPendingOnboardingPlan();
+  Future<void> setStoreSubscriptionActive(bool active) async {
+    if (_storeSubscriptionActive == active) return;
+
+    _storeSubscriptionActive = active;
+    await _storage.setStoreSubscriptionActive(active);
+    if (active) await _unlockPendingOnboardingPlan();
     notifyListeners();
   }
 

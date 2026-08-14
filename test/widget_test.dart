@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gwen/main.dart';
@@ -12,6 +13,14 @@ void main() {
   testWidgets('StillnessApp smoke test - starts on Home screen', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({
+      'onboarding_completed': true,
+      'heal_disclaimer_accepted': true,
+    });
     final appState = AppState();
     await appState.init();
 
@@ -19,17 +28,36 @@ void main() {
     await tester.pumpWidget(StillnessApp(appState: appState));
     await tester.pump();
 
-    // Verify that the title / welcome text displays
-    expect(find.text('Welcome to Stillness'), findsOneWidget);
-    expect(find.text('You are here. You are safe.'), findsOneWidget);
-
-    // Verify anxiety slider title is rendered
-    expect(find.text('How anxious are you right now?'), findsOneWidget);
+    // Verify the current home content displays.
+    expect(find.text('Panic'), findsOneWidget);
+    expect(find.text('Not OK'), findsOneWidget);
+    expect(find.text('Surviving'), findsOneWidget);
+    expect(find.text('Progress'), findsOneWidget);
+    expect(find.text('Reminders'), findsOneWidget);
 
     // Verify bottom nav destinations are displayed
     expect(find.text('Home'), findsWidgets);
-    expect(find.text('Breathe'), findsOneWidget);
-    expect(find.text('Sanctuary'), findsOneWidget);
-    expect(find.text('Spaces'), findsOneWidget);
+    expect(find.text('Cope'), findsOneWidget);
+    expect(find.text('Journal'), findsOneWidget);
+    expect(find.text('Understand'), findsOneWidget);
+    expect(find.text('Heal'), findsOneWidget);
   });
+
+  testWidgets(
+    'an upgraded user who has not accepted the terms starts at onboarding',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({
+        'onboarding_completed': true,
+        'heal_disclaimer_accepted': false,
+      });
+      final appState = AppState();
+      await appState.init();
+
+      await tester.pumpWidget(StillnessApp(appState: appState));
+      await tester.pump();
+
+      expect(find.text('Hi, I am Gwyn'), findsOneWidget);
+      expect(find.text('Terms and Conditions'), findsNothing);
+    },
+  );
 }

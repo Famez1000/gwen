@@ -1,5 +1,6 @@
 # Miscellaneous
 apikey.txt
+apikey revenuecat.txt
 # Generated Firebase client configuration. Regenerate locally after rotating
 # credentials; never commit the generated files.
 android/app/google-services.json

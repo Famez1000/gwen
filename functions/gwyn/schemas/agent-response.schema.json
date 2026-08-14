@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gwyn.app/schemas/agent-response.schema.json",
+  "title": "GwynAgentResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["cope", "understand", "heal"]
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "open_breathing",
+            "open_grounding",
+            "open_observe_thoughts",
+            "open_leaf_exercise",
+            "open_autogenic_training",
+            "open_acceptance",
+            "open_forgiveness",
+            "open_meditation",
+            "ask_reflection",
+            "propose_trigger",
+            "propose_insight",
+            "propose_plan_step",
+            "none"
+          ]
+        },
+        "id": {
+          "type": ["string", "null"],
+          "maxLength": 100
+        },
+        "label": {
+          "type": ["string", "null"],
+          "maxLength": 120
+        }
+      },
+      "required": ["type", "id", "label"]
+    },
+    "memoryCandidate": {
+      "$ref": "memory-candidate.schema.json"
+    },
+    "followUp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["exercise_result", "reflection_question", "none"]
+        },
+        "question": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        }
+      },
+      "required": ["type", "question"]
+    }
+  },
+  "required": ["message", "phase", "action", "memoryCandidate", "followUp"]
+}

@@ -1,3 +1,10 @@
+Verzamel emailadressen waar mogelijk
+Maak meditaties
+Laat de leaf steeds anders vallen
+
+Maak een sectie waarin je uitlegt wat niet helpt of mogelijk averechts (persona bijv), laat Gwyn het vertellen, optionele audio dus.
+
+
 Create these screenshots:
 https://chatgpt.com/c/6a7a1243-1510-83eb-9564-61bd3b94f2c1
 Calm Your Anxiety
@@ -17,6 +24,11 @@ See how you're feeling over time
 Cope. Understand. Heal.
 A complete system for overcoming anxiety
 
+
+Add sign up with Apple / Google / email.
+Paywall testing?
+https://app.revenuecat.com/projects/4fbed7de/overview
+Did I apply for Apple smal business for lower cuts: https://www.youtube.com/watch?v=Z-0Vf79GD3w (57:28)
 
 Build preorder?:
 https://developer.apple.com/app-store/pre-orders/

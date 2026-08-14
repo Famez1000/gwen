@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gwyn.app/schemas/routing.schema.json",
+  "title": "GwynRoutingDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "type": "string",
+      "enum": ["cope", "understand", "heal"]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "panic",
+        "rumination",
+        "overwhelm",
+        "calm_exploration",
+        "identified_pattern",
+        "ready_for_action",
+        "maintenance"
+      ]
+    },
+    "urgency": {
+      "type": "string",
+      "enum": ["routine", "elevated"]
+    },
+    "contextNeeded": {
+      "type": "array",
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "known_triggers",
+          "recent_insights",
+          "helpful_exercises",
+          "current_plan_steps",
+          "recent_exercise_results"
+        ]
+      }
+    }
+  },
+  "required": ["agent", "state", "urgency", "contextNeeded"]
+}

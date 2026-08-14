@@ -410,7 +410,7 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
               onTap: () => _openExercise(GroundingScreen(appState: _appState)),
             ),
             _ExerciseIconButton(
-              icon: Icons.theater_comedy_rounded,
+              icon: Icons.visibility_rounded,
               label: 'Persona',
               onTap: () =>
                   _openExercise(AnxietyPersonaScreen(appState: _appState)),
@@ -441,10 +441,10 @@ class _MoodScreenContentState extends State<_MoodScreenContent> {
     return Column(
       children: [
         _MoodSectionCard(
-          title: 'Remember this',
+          title: 'Let it be',
           child: _SupportText(
             text:
-                'It\'s OK not to feel OK. Let your shoulders drop, take a deep breath and relax.',
+                'Accept for now that the feeling is there, again. Take a few deep breaths and try to relax.',
             isDark: isDark,
           ),
         ),

@@ -1,0 +1,58 @@
+{
+  "main": {
+    "prompt": "agents/main.md",
+    "shared": [
+      "shared/methodology.md",
+      "shared/tone.md",
+      "shared/safety-boundaries.md"
+    ],
+    "allowedSpecialists": ["cope", "understand", "heal"]
+  },
+  "cope": {
+    "prompt": "agents/cope.md",
+    "shared": [
+      "shared/methodology.md",
+      "shared/tone.md",
+      "shared/safety-boundaries.md"
+    ],
+    "allowedActions": [
+      "open_breathing",
+      "open_grounding",
+      "open_observe_thoughts",
+      "open_leaf_exercise",
+      "open_autogenic_training",
+      "ask_reflection",
+      "none"
+    ]
+  },
+  "understand": {
+    "prompt": "agents/understand.md",
+    "shared": [
+      "shared/methodology.md",
+      "shared/tone.md",
+      "shared/safety-boundaries.md"
+    ],
+    "allowedActions": [
+      "ask_reflection",
+      "propose_trigger",
+      "propose_insight",
+      "none"
+    ]
+  },
+  "heal": {
+    "prompt": "agents/heal.md",
+    "shared": [
+      "shared/methodology.md",
+      "shared/tone.md",
+      "shared/safety-boundaries.md"
+    ],
+    "allowedActions": [
+      "open_acceptance",
+      "open_forgiveness",
+      "open_meditation",
+      "ask_reflection",
+      "propose_plan_step",
+      "none"
+    ]
+  }
+}

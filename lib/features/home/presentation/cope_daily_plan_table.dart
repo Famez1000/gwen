@@ -112,7 +112,7 @@ class _CopeDailyPlanTableState extends State<CopeDailyPlanTable> {
                       ),
                       _MethodCell(
                         label: 'Create persona',
-                        icon: Icons.theater_comedy_rounded,
+                        icon: Icons.visibility_rounded,
                         color: Colors.amber.shade700,
                         onTap: () => _openTool(
                           AnxietyPersonaScreen(

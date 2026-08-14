@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/services/revenue_cat_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../chat/presentation/chat_screen.dart';
 import '../presentation/subscription_screen.dart';
 
-void openGwynChatOrSubscription(
+Future<void> openGwynChatOrSubscription(
   BuildContext context, {
   String title = 'Chat with Gwyn',
   String welcomeMessage =
@@ -15,8 +16,13 @@ void openGwynChatOrSubscription(
   bool showGwynHeader = true,
   bool previewBeforeSubscription = false,
   String? previewDialogMessage,
-}) {
+}) async {
   final appState = context.read<AppState>();
+  if (useRevenueCatPaywalls) {
+    await RevenueCatService.instance.refreshSubscriptionStatus();
+    if (!context.mounted) return;
+  }
+
   final screen = appState.hasActiveSubscription
       ? ChatScreen(
           appState: appState,
@@ -39,17 +45,22 @@ void openGwynChatOrSubscription(
         )
       : const SubscriptionScreen();
 
-  Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 }
 
-void openSubscribedFeatureOrSubscription(
+Future<void> openSubscribedFeatureOrSubscription(
   BuildContext context,
   Widget subscribedScreen,
-) {
+) async {
   final appState = context.read<AppState>();
+  if (useRevenueCatPaywalls) {
+    await RevenueCatService.instance.refreshSubscriptionStatus();
+    if (!context.mounted) return;
+  }
+
   final screen = appState.hasActiveSubscription
       ? subscribedScreen
       : const SubscriptionScreen();
 
-  Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 }

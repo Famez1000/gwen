@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gwyn.app/schemas/memory-candidate.schema.json",
+  "title": "GwynMemoryCandidate",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "save": {
+      "type": "boolean"
+    },
+    "type": {
+      "type": ["string", "null"],
+      "enum": [
+        "trigger",
+        "surface_fear",
+        "underlying_fear",
+        "belief",
+        "pattern",
+        "helpful_exercise",
+        "exercise_result",
+        "plan_step",
+        null
+      ]
+    },
+    "text": {
+      "type": ["string", "null"],
+      "maxLength": 1000
+    },
+    "sourcePhase": {
+      "type": ["string", "null"],
+      "enum": ["cope", "understand", "heal", null]
+    },
+    "importance": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": ["save", "type", "text", "sourcePhase", "importance"]
+}

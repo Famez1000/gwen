@@ -524,10 +524,10 @@ packages:
     dependency: "direct main"
     description:
       name: in_app_purchase_android
-      sha256: eb8f551039481d1b265f12fa54f5ab5dd4f13ec5444a468b85a3793517a37fda
+      sha256: c04e2cad0470fc868cb0ea06477648f003220b1b6612909db83528ca83ac0905
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.1"
+    version: "0.5.2"
   in_app_purchase_platform_interface:
     dependency: transitive
     description:
@@ -540,10 +540,10 @@ packages:
     dependency: transitive
     description:
       name: in_app_purchase_storekit
-      sha256: "47d63717270133fcfa1ff8e144f6aaf9d498fa3884de43e24909737da55aedd8"
+      sha256: "9602e249a0e30351f047d5715957f27709ed7b42f631fba8941dcad51489932a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.10+1"
+    version: "0.4.11+1"
   in_app_review:
     dependency: "direct main"
     description:
@@ -800,6 +800,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  purchases_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_flutter
+      sha256: dd2edfbdcb28154f3b73d7376ab7b9ebf9dbcf93c08bca0096cc50ae8fe75802
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.8.0"
+  purchases_ui_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_ui_flutter
+      sha256: f09d1c595750302db6567b6bb9d92e54f184d6bc97703cdfc33bc01d29af016c
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.8.0"
   record_use:
     dependency: transitive
     description:

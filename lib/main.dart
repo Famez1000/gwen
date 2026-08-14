@@ -3,6 +3,7 @@ import 'dart:async';
 import 'core/state/app_state.dart';
 import 'core/services/gemini_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/revenue_cat_service.dart';
 import 'core/services/review_prompt_service.dart';
 import 'core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,10 @@ void main() async {
   // Create state singleton
   final appState = AppState();
   await appState.init();
+  await _runStartupStep(
+    'RevenueCatService.initialize',
+    () => RevenueCatService.instance.initialize(appState),
+  );
   await _runStartupStep(
     'ReviewPromptService.init',
     ReviewPromptService.instance.init,
@@ -97,7 +102,6 @@ class StillnessApp extends StatelessWidget {
                     onComplete: () => _completeOnboarding(appState),
                   )
                 : OnboardingScreen(
-                    showIntroPages: !appState.onboardingCompleted,
                     onAcceptTerms: appState.acceptHealDisclaimer,
                     onNameSubmitted: appState.setUserName,
                     onComplete: () => _completeOnboarding(appState),

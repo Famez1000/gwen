@@ -10,6 +10,7 @@ import '../../subscription/application/subscription_gate.dart';
 import '../../thought_support/presentation/thought_support_screen.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
+import 'autogenic_training_screen.dart';
 import 'gwen_joke_screen.dart';
 import 'gwyn_puzzle_screen.dart';
 import 'hike_screen.dart';
@@ -290,11 +291,11 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                   ],
 
                   _SanctuaryCard(
-                    title: "Create a persona to isolate your anxiety",
+                    title: "Observe your thoughts",
                     desc: appState.hasAnxietyPersona
                         ? "When anxiety speaks, notice: “Oh, it’s good old ${appState.anxietyPersonaName} again.”"
                         : "Give your anxious thoughts a face and a name, so you can notice them without becoming them.",
-                    icon: Icons.theater_comedy_rounded,
+                    icon: Icons.visibility_rounded,
                     color: Colors.amber.shade700,
                     onTap: () => _navigateToScreen(
                       context,
@@ -376,6 +377,19 @@ class _SanctuaryScreenState extends State<SanctuaryScreen> {
                     onTap: () => _navigateToScreen(
                       context,
                       BreathingScreen(appState: appState),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _SanctuaryCard(
+                    title: "Autogenic training",
+                    desc:
+                        "Use calm, repeated phrases and passive attention to invite heaviness, warmth, and relaxation.",
+                    icon: Icons.local_fire_department_rounded,
+                    color: Colors.blueGrey.shade500,
+                    onTap: () => _navigateToScreen(
+                      context,
+                      const AutogenicTrainingScreen(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -577,6 +591,7 @@ class _SanctuaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final exerciseInfo = _copeExerciseInfo[title];
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 100),
@@ -587,24 +602,49 @@ class _SanctuaryCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(31),
-                  shape: BoxShape.circle,
-                ),
-                child: imageAsset == null
-                    ? Icon(icon, color: color, size: 26)
-                    : ClipOval(
-                        child: Image.asset(
-                          imageAsset!,
-                          width: 26,
-                          height: 26,
-                          fit: BoxFit.cover,
+              Semantics(
+                button: exerciseInfo != null,
+                label: exerciseInfo == null ? title : 'About $title',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: exerciseInfo == null
+                      ? null
+                      : () => _showExerciseInfoDialog(
+                          context,
+                          title: title,
+                          icon: icon,
+                          imageAsset: imageAsset,
+                          color: color,
+                          info: exerciseInfo,
                         ),
+                  child: Tooltip(
+                    message: exerciseInfo == null
+                        ? title
+                        : 'Learn about $title',
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(31),
+                          shape: BoxShape.circle,
+                        ),
+                        child: imageAsset == null
+                            ? Icon(icon, color: color, size: 26)
+                            : ClipOval(
+                                child: Image.asset(
+                                  imageAsset!,
+                                  width: 26,
+                                  height: 26,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                       ),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 14),
               Flexible(
                 fit: FlexFit.loose,
                 child: Column(
@@ -646,4 +686,230 @@ class _SanctuaryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ExerciseInfo {
+  final String explanation;
+  final String reason;
+
+  const _ExerciseInfo({required this.explanation, required this.reason});
+}
+
+const Map<String, _ExerciseInfo> _copeExerciseInfo = {
+  'Observe your thoughts': _ExerciseInfo(
+    explanation:
+        'Give your anxiety a separate name, voice, or character. When anxious thoughts appear, identify them as something the persona is saying instead of treating every thought as a fact.',
+    reason:
+        'Creating distance from anxious thoughts can make them easier to notice, question, and respond to without feeling defined by them.',
+  ),
+  'My Truth': _ExerciseInfo(
+    explanation:
+        'Write down reliable truths, reassuring facts, and reminders you want available when anxiety makes situations feel more dangerous or hopeless than they are.',
+    reason:
+        'Reading words you chose while calm can help you reconnect with a more balanced view when anxious thinking becomes intense.',
+  ),
+  'Affirmations': _ExerciseInfo(
+    explanation:
+        'Choose short, supportive statements and repeat or save the ones that feel believable and helpful to you.',
+    reason:
+        'Gentle repetition can redirect attention away from self-criticism and reinforce a calmer, more compassionate inner voice.',
+  ),
+  'Leaf Exercise': _ExerciseInfo(
+    explanation:
+        'Watch the leaves drift and let your attention rest on their movement. When thoughts pull you away, gently return your focus to what you see.',
+    reason:
+        'A simple visual focus gives an overactive mind something neutral to follow, which may interrupt rumination and create a moment of calm.',
+  ),
+  'Grounding Sanctuary': _ExerciseInfo(
+    explanation:
+        'Use the 5-4-3-2-1 method to notice things you can see, touch, hear, smell, and taste in your immediate surroundings.',
+    reason:
+        'Paying attention to real sensory details can shift focus from imagined threats back to the safety and facts of the present moment.',
+  ),
+  'Breathing Exercises': _ExerciseInfo(
+    explanation:
+        'Follow a paced breathing pattern that guides when to inhale, pause, and exhale without forcing the breath.',
+    reason:
+        'Slower, steadier breathing can reduce physical arousal and give your nervous system a signal that it can begin to settle.',
+  ),
+  'Autogenic training': _ExerciseInfo(
+    explanation:
+        'Repeat calm phrases about heaviness, warmth, heartbeat, breathing, the abdomen, and a cool forehead while observing sensations without forcing them.',
+    reason:
+        'Passive attention and repeated calming cues may release muscle tension, lower stress, and support a deeper sense of physical relaxation.',
+  ),
+  'Take a Hike': _ExerciseInfo(
+    explanation:
+        'Step outside for a gentle walk and let your attention move between your body, the path, and the natural details around you.',
+    reason:
+        'Light movement can use some of the energy created by anxiety, while nature and a change of surroundings may help reset your attention.',
+  ),
+  'Bubble Pop': _ExerciseInfo(
+    explanation:
+        'Pop the falling bubbles with simple, rhythmic taps and let yourself focus on the playful movement and sounds.',
+    reason:
+        'A small repetitive game can occupy restless attention, provide a harmless physical outlet, and offer a brief break from spiraling thoughts.',
+  ),
+  'Puzzle with Gwyn': _ExerciseInfo(
+    explanation:
+        "Slide the image tiles into their correct positions until Gwyn's picture is restored.",
+    reason:
+        'A clear, manageable task can redirect attention toward problem-solving and give your mind a concrete goal instead of an anxious loop.',
+  ),
+  'Thought Diffuser': _ExerciseInfo(
+    explanation:
+        'Name a spiraling thought, inspect how threatening it really is, and picture it becoming separate from you as it drifts away.',
+    reason:
+        'Putting a thought into words and examining it from a distance can reduce its emotional grip and help you see it as a thought rather than a certainty.',
+  ),
+  'Meditations': _ExerciseInfo(
+    explanation:
+        'Listen to a calming guided or ambient track while resting, breathing, drawing, or grounding.',
+    reason:
+        'A steady sound focus can reduce mental noise, support slower breathing, and make it easier to remain with the present moment.',
+  ),
+  'Draw & Guess': _ExerciseInfo(
+    explanation:
+        'Sketch anything that comes to mind and let Gwyn make a playful guess about what you created.',
+    reason:
+        'Creative play can move attention away from worry, give feelings a nonverbal outlet, and make room for curiosity or humor.',
+  ),
+  'Let Gwyn tell a joke': _ExerciseInfo(
+    explanation:
+        'Take a short pause and let Gwyn share something silly, with no pressure to react in any particular way.',
+    reason:
+        'Humor and surprise can briefly loosen anxious focus and help the body shift out of a tense, threat-focused state.',
+  ),
+};
+
+Future<void> _showExerciseInfoDialog(
+  BuildContext context, {
+  required String title,
+  required IconData icon,
+  required String? imageAsset,
+  required Color color,
+  required _ExerciseInfo info,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final bodyColor = isDark ? Colors.white70 : Colors.black.withAlpha(166);
+
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(31),
+                      shape: BoxShape.circle,
+                    ),
+                    child: imageAsset == null
+                        ? Icon(icon, color: color, size: 34)
+                        : ClipOval(
+                            child: Image.asset(
+                              imageAsset,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 7),
+                      child: Text(
+                        title,
+                        style: Theme.of(dialogContext).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'About this exercise',
+                style: Theme.of(
+                  dialogContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                info.explanation,
+                style: TextStyle(fontSize: 14, height: 1.55, color: bodyColor),
+              ),
+              const SizedBox(height: 22),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(isDark ? 28 : 20),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.lightbulb_rounded, color: color, size: 22),
+                        const SizedBox(width: 9),
+                        const Text(
+                          'Why it can help',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      info.reason,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.55,
+                        color: bodyColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    backgroundColor: color,
+                  ),
+                  child: const Text('Got it'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

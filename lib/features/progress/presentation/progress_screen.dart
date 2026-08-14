@@ -288,7 +288,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               },
             ),
             _ProgressMetric.checklist(
-              icon: Icons.theater_comedy_rounded,
+              icon: Icons.visibility_rounded,
               label: 'Persona',
               isChecked: widget.appState.hasAnxietyPersona,
               onTap: _openAnxietyPersona,

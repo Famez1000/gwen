@@ -5,6 +5,7 @@ import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import '../../../core/services/revenue_cat_service.dart';
 import '../../../core/state/app_state.dart';
 import '../../chat/presentation/chat_screen.dart';
+import 'onboarding_paywall_result.dart';
 
 class RevenueCatSubscriptionScreen extends StatefulWidget {
   final bool isOnboardingPaywall;
@@ -23,6 +24,7 @@ class _RevenueCatSubscriptionScreenState
     extends State<RevenueCatSubscriptionScreen> {
   bool _isPresenting = true;
   String? _errorMessage;
+  String? _message;
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _RevenueCatSubscriptionScreenState
     setState(() {
       _isPresenting = true;
       _errorMessage = null;
+      _message = null;
     });
 
     final revenueCat = RevenueCatService.instance;
@@ -53,7 +56,7 @@ class _RevenueCatSubscriptionScreenState
       final isActive = await revenueCat.refreshSubscriptionStatus();
       if (!mounted) return;
 
-      if (isActive) {
+      if (result == PaywallResult.purchased && isActive) {
         await _finishSuccessfulPurchase();
         return;
       }
@@ -68,7 +71,12 @@ class _RevenueCatSubscriptionScreenState
         return;
       }
 
-      Navigator.of(context).maybePop();
+      setState(() {
+        _isPresenting = false;
+        _message = isActive
+            ? 'Your Gwyn Plus subscription is active.'
+            : 'Choose a plan, or continue with the free version.';
+      });
     } catch (error) {
       debugPrint('RevenueCat paywall failed: $error');
       if (!mounted) return;
@@ -81,7 +89,7 @@ class _RevenueCatSubscriptionScreenState
 
   Future<void> _finishSuccessfulPurchase() async {
     if (widget.isOnboardingPaywall) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(OnboardingPaywallResult.subscribed);
       return;
     }
 
@@ -93,44 +101,55 @@ class _RevenueCatSubscriptionScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: !widget.isOnboardingPaywall,
-        title: const Text('Gwyn Plus'),
-        actions: [
-          if (widget.isOnboardingPaywall)
-            IconButton(
-              tooltip: 'Skip',
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.close_rounded),
-            ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _errorMessage == null
-              ? const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 18),
-                    Text('Loading subscription optionsâ€¦'),
-                  ],
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline_rounded, size: 42),
-                    const SizedBox(height: 14),
-                    Text(_errorMessage!, textAlign: TextAlign.center),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: _isPresenting ? null : _presentPaywall,
-                      child: const Text('Try again'),
-                    ),
-                  ],
-                ),
+    return PopScope(
+      canPop: !widget.isOnboardingPaywall,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: !widget.isOnboardingPaywall,
+          title: const Text('Gwyn Plus'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: _errorMessage == null && _message == null
+                ? const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 18),
+                      Text('Loading subscription optionsâ€¦'),
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _errorMessage == null
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.error_outline_rounded,
+                        size: 42,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _errorMessage ?? _message!,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      if (_errorMessage != null)
+                        FilledButton(
+                          onPressed: _isPresenting ? null : _presentPaywall,
+                          child: const Text('Try again'),
+                        )
+                      else if (widget.isOnboardingPaywall)
+                        FilledButton(
+                          onPressed: () => Navigator.of(
+                            context,
+                          ).pop(OnboardingPaywallResult.continueFree),
+                          child: const Text('Continue with free version'),
+                        ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

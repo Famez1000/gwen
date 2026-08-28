@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../chat/presentation/chat_screen.dart';
+import 'onboarding_paywall_result.dart';
 
 class LegacySubscriptionScreen extends StatefulWidget {
   final bool isOnboardingPaywall;
@@ -239,7 +240,6 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
           }
           break;
         case PurchaseStatus.purchased:
-        case PurchaseStatus.restored:
           _purchaseFlowTimeout?.cancel();
           await context.read<AppState>().activateStoreSubscription();
           if (purchaseDetails.pendingCompletePurchase) {
@@ -253,11 +253,23 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
                 : 'Gwyn Plus is active.';
           });
           if (widget.isOnboardingPaywall) {
-            Navigator.of(context).pop();
+            Navigator.of(context).pop(OnboardingPaywallResult.subscribed);
           } else if (_openChatAfterNextPurchaseUpdate) {
             _openChatAfterNextPurchaseUpdate = false;
             await _openChatAfterPurchase();
           }
+          break;
+        case PurchaseStatus.restored:
+          _purchaseFlowTimeout?.cancel();
+          await context.read<AppState>().activateStoreSubscription();
+          if (purchaseDetails.pendingCompletePurchase) {
+            await _inAppPurchase.completePurchase(purchaseDetails);
+          }
+          if (!mounted) return;
+          setState(() {
+            _isPurchasePending = false;
+            _storeMessage = 'Your Gwyn Plus subscription is active.';
+          });
           break;
         case PurchaseStatus.error:
           _purchaseFlowTimeout?.cancel();
@@ -606,225 +618,241 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
     );
     final selectedProduct = _preferredProductForPlan(_selectedPlan);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        automaticallyImplyLeading: !widget.isOnboardingPaywall,
-        title: const Text(
-          'Gwyn Plus',
-          style: TextStyle(fontWeight: FontWeight.w600),
+    return PopScope(
+      canPop: !widget.isOnboardingPaywall,
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          automaticallyImplyLeading: !widget.isOnboardingPaywall,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [],
         ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          if (widget.isOnboardingPaywall)
-            IconButton(
-              tooltip: 'Skip',
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close_rounded, size: 22),
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? const [
-                          Color(0xFF191A2A),
-                          Color(0xFF1F2933),
-                          Color(0xFF172826),
-                        ]
-                      : const [
-                          Color(0xFFF1EEFF),
-                          Color(0xFFF9F7F1),
-                          Color(0xFFE9F6F2),
-                        ],
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? const [
+                            Color(0xFF191A2A),
+                            Color(0xFF1F2933),
+                            Color(0xFF172826),
+                          ]
+                        : const [
+                            Color(0xFFF1EEFF),
+                            Color(0xFFF9F7F1),
+                            Color(0xFFE9F6F2),
+                          ],
+                  ),
                 ),
               ),
             ),
-          ),
-          SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Unlock unlimited access to all features',
-                        textAlign: TextAlign.left,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: surfaceText,
-                          fontWeight: FontWeight.bold,
-                          height: 1.15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      width: 92,
-                      height: 92,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: primaryColor.withAlpha(128)),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.asset(
-                        'assets/images/icon3.png',
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 28),
-                GlassCard(
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
+            SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _BenefitLine(
-                        icon: Icons.chat_bubble_rounded,
-                        text: 'Chat with Gwyn from supportive app moments',
-                        color: primaryColor,
-                      ),
-                      const SizedBox(height: 12),
-                      _BenefitLine(
-                        icon: Icons.favorite_rounded,
-                        text: 'Gentle anxiety support when you need it',
-                        color: Colors.pink.shade300,
-                      ),
-                      const SizedBox(height: 12),
-                      _BenefitLine(
-                        icon: Icons.auto_awesome_rounded,
-                        text: 'Personalized reflections and next steps',
-                        color: Colors.teal.shade500,
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        selectedPlanHasTrial
-                            ? 'Start with a 3 day trial'
-                            : 'Choose a plan to continue',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: mutedText,
-                          height: 1.45,
+                      Expanded(
+                        child: Text(
+                          'Unlock unlimited access to all features',
+                          textAlign: TextAlign.left,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: surfaceText,
+                                fontWeight: FontWeight.bold,
+                                height: 1.15,
+                              ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      _PlanOption(
-                        title: 'Monthly',
-                        price: _priceForPlan(_SubscriptionPlan.monthly),
-                        subtitle: _subtitleForPlan(_SubscriptionPlan.monthly),
-                        badge: '25% off offer',
-                        isSelected: _selectedPlan == _SubscriptionPlan.monthly,
-                        primaryColor: primaryColor,
-                        surfaceText: surfaceText,
-                        mutedText: mutedText,
-                        onTap: () {
-                          setState(() {
-                            _selectedPlan = _SubscriptionPlan.monthly;
-                          });
-                        },
+                      const SizedBox(width: 16),
+                      Container(
+                        width: 92,
+                        height: 92,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: primaryColor.withAlpha(128),
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.asset(
+                          'assets/images/icon3.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      _PlanOption(
-                        title: 'Yearly',
-                        price: _priceForPlan(_SubscriptionPlan.yearly),
-                        subtitle: _subtitleForPlan(_SubscriptionPlan.yearly),
-                        badge: '25% off offer',
-                        isSelected: _selectedPlan == _SubscriptionPlan.yearly,
-                        primaryColor: primaryColor,
-                        surfaceText: surfaceText,
-                        mutedText: mutedText,
-                        onTap: () {
-                          setState(() {
-                            _selectedPlan = _SubscriptionPlan.yearly;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: (_isLoadingProducts || _isPurchasePending)
-                              ? null
-                              : _buySelectedPlan,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  GlassCard(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      children: [
+                        _BenefitLine(
+                          icon: Icons.chat_bubble_rounded,
+                          text:
+                              'A personalized plan to cope with your anxiety at any moment',
+                          color: primaryColor,
+                        ),
+                        const SizedBox(height: 12),
+                        _BenefitLine(
+                          icon: Icons.favorite_rounded,
+                          text:
+                              'A clear method to understand why you feel anxious',
+                          color: Colors.pink.shade300,
+                        ),
+                        const SizedBox(height: 12),
+                        _BenefitLine(
+                          icon: Icons.self_improvement_rounded,
+                          text:
+                              'Supportive exercises and tools to potentially heal your anxiety',
+                          color: Colors.teal.shade500,
+                        ),
+                        _BenefitLine(
+                          icon: Icons.auto_awesome_rounded,
+                          text:
+                              'Chat and Games with Gwyn to further support you',
+                          color: Colors.teal.shade500,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          selectedPlanHasTrial
+                              ? 'Start with a 7 day free trial'
+                              : 'Start with a 7 day free trial',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: mutedText,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _PlanOption(
+                          title: 'Monthly',
+                          price: _priceForPlan(_SubscriptionPlan.monthly),
+                          subtitle: _subtitleForPlan(_SubscriptionPlan.monthly),
+                          badge: '25% off offer',
+                          isSelected:
+                              _selectedPlan == _SubscriptionPlan.monthly,
+                          primaryColor: primaryColor,
+                          surfaceText: surfaceText,
+                          mutedText: mutedText,
+                          onTap: () {
+                            setState(() {
+                              _selectedPlan = _SubscriptionPlan.monthly;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _PlanOption(
+                          title: 'Yearly',
+                          price: _priceForPlan(_SubscriptionPlan.yearly),
+                          subtitle: _subtitleForPlan(_SubscriptionPlan.yearly),
+                          badge: '25% off offer',
+                          isSelected: _selectedPlan == _SubscriptionPlan.yearly,
+                          primaryColor: primaryColor,
+                          surfaceText: surfaceText,
+                          mutedText: mutedText,
+                          onTap: () {
+                            setState(() {
+                              _selectedPlan = _SubscriptionPlan.yearly;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed:
+                                (_isLoadingProducts || _isPurchasePending)
+                                ? null
+                                : _buySelectedPlan,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            child: Text(
+                              _isPurchasePending
+                                  ? 'Processing...'
+                                  : _isLoadingProducts
+                                  ? 'Loading...'
+                                  : selectedPlanHasTrial
+                                  ? 'Try for free'
+                                  : 'Start My Free Trial',
                             ),
                           ),
-                          child: Text(
-                            _isPurchasePending
-                                ? 'Processing...'
-                                : _isLoadingProducts
-                                ? 'Loading...'
-                                : selectedPlanHasTrial
-                                ? 'Try for free'
-                                : 'Continue',
-                          ),
                         ),
-                      ),
-                      if (_storeMessage != null) ...[
+                        if (_storeMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _storeMessage!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: mutedText, fontSize: 12),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         Text(
-                          _storeMessage!,
+                          'Cancel anytime.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: mutedText, fontSize: 12),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      Text(
-                        'Cancel anytime.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: mutedText, fontSize: 12),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                _FooterLink(
-                  label: 'Restore purchase',
-                  color: mutedText,
-                  onTap: _restorePurchase,
-                ),
-                const SizedBox(height: 6),
-                _FooterLink(
-                  label: 'Terms and Conditions',
-                  color: mutedText,
-                  onTap: _openTerms,
-                ),
-                if (_showSubscriptionDebug) ...[
-                  const SizedBox(height: 16),
-                  _SubscriptionDebugPanel(
-                    lines: [
-                      'selectedPlan=${_selectedPlan.name}',
-                      'selectedHasTrial=$selectedPlanHasTrial',
-                      'selectedProduct=${selectedProduct == null ? 'null' : _describeProduct(selectedProduct)}',
-                      'storeAvailable=$_isStoreAvailable',
-                      'loading=$_isLoadingProducts',
-                      'purchasePending=$_isPurchasePending',
-                      'openChatAfterNextPurchaseUpdate=$_openChatAfterNextPurchaseUpdate',
-                      'productsById=${_productsById.map((key, value) => MapEntry(key, value.length))}',
-                      if (_storeMessage != null) 'storeMessage=$_storeMessage',
-                      ..._debugLines.reversed,
-                    ],
+                  const SizedBox(height: 14),
+                  _FooterLink(
+                    label: 'Restore purchase',
+                    color: mutedText,
+                    onTap: _restorePurchase,
                   ),
+                  if (widget.isOnboardingPaywall) ...[
+                    const SizedBox(height: 10),
+                    _FooterLink(
+                      label: 'Continue with free version',
+                      color: mutedText,
+                      onTap: () => Navigator.of(
+                        context,
+                      ).pop(OnboardingPaywallResult.continueFree),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  _FooterLink(
+                    label: 'Terms and Conditions',
+                    color: mutedText,
+                    onTap: _openTerms,
+                  ),
+                  if (_showSubscriptionDebug) ...[
+                    const SizedBox(height: 16),
+                    _SubscriptionDebugPanel(
+                      lines: [
+                        'selectedPlan=${_selectedPlan.name}',
+                        'selectedHasTrial=$selectedPlanHasTrial',
+                        'selectedProduct=${selectedProduct == null ? 'null' : _describeProduct(selectedProduct)}',
+                        'storeAvailable=$_isStoreAvailable',
+                        'loading=$_isLoadingProducts',
+                        'purchasePending=$_isPurchasePending',
+                        'openChatAfterNextPurchaseUpdate=$_openChatAfterNextPurchaseUpdate',
+                        'productsById=${_productsById.map((key, value) => MapEntry(key, value.length))}',
+                        if (_storeMessage != null)
+                          'storeMessage=$_storeMessage',
+                        ..._debugLines.reversed,
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

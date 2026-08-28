@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/presentation/onboarding_paywall_result.dart';
 
 class PersonalizedOnboardingScreen extends StatefulWidget {
   final AppState appState;
@@ -152,12 +153,12 @@ class _PersonalizedOnboardingScreenState
       await widget.appState.setPendingOnboardingPlan(_goal);
     }
     if (!mounted) return;
-    await Navigator.of(context).push(
+    final result = await Navigator.of(context).push<OnboardingPaywallResult>(
       MaterialPageRoute(
         builder: (_) => const SubscriptionScreen(isOnboardingPaywall: true),
       ),
     );
-    if (!mounted) return;
+    if (!mounted || result == null) return;
     await widget.onComplete();
   }
 

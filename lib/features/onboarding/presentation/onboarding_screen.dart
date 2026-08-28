@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../subscription/presentation/subscription_screen.dart';
+import '../../subscription/presentation/onboarding_paywall_result.dart';
 
 @Preview(name: 'Onboarding', group: 'Gwyn', size: Size(390, 844))
 Widget onboardingPreview() {
@@ -116,12 +117,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await _submitNameIfPresent();
     await widget.onAcceptTerms();
     if (widget.showIntroPages && widget.showPaywallOnComplete && mounted) {
-      await Navigator.of(context).push(
+      final result = await Navigator.of(context).push<OnboardingPaywallResult>(
         MaterialPageRoute(
           builder: (_) => const SubscriptionScreen(isOnboardingPaywall: true),
         ),
       );
-      if (!mounted) return;
+      if (!mounted || result == null) return;
     }
     await widget.onComplete();
   }

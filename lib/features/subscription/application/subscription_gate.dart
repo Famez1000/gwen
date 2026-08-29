@@ -18,7 +18,7 @@ Future<void> openGwynChatOrSubscription(
   String? previewDialogMessage,
 }) async {
   final appState = context.read<AppState>();
-  if (useRevenueCatPaywalls) {
+  if (RevenueCatService.instance.isConfigured) {
     await RevenueCatService.instance.refreshSubscriptionStatus();
     if (!context.mounted) return;
   }
@@ -53,7 +53,7 @@ Future<void> openSubscribedFeatureOrSubscription(
   Widget subscribedScreen,
 ) async {
   final appState = context.read<AppState>();
-  if (useRevenueCatPaywalls) {
+  if (RevenueCatService.instance.isConfigured) {
     await RevenueCatService.instance.refreshSubscriptionStatus();
     if (!context.mounted) return;
   }

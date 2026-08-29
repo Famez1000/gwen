@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/state/app_state.dart';
+import '../../../core/services/revenue_cat_service.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../chat/presentation/chat_screen.dart';
 import 'onboarding_paywall_result.dart';
@@ -247,20 +248,26 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
           final finishOnboarding =
               widget.isOnboardingPaywall && _finishOnboardingAfterNextPurchase;
           _finishOnboardingAfterNextPurchase = false;
-          await context.read<AppState>().activateStoreSubscription();
+          final purchasedSubscriptionActive = await _validateSubscription(
+            purchaseDetails,
+            isNewPurchase: true,
+          );
           if (purchaseDetails.pendingCompletePurchase) {
             await _inAppPurchase.completePurchase(purchaseDetails);
           }
           if (!mounted) return;
           setState(() {
             _isPurchasePending = false;
-            _storeMessage = _openChatAfterNextPurchaseUpdate
-                ? null
-                : 'Gwyn Plus is active.';
+            _storeMessage = purchasedSubscriptionActive
+                ? (_openChatAfterNextPurchaseUpdate
+                      ? null
+                      : 'Gwyn Plus is active.')
+                : 'The purchase could not be verified. Please try Restore purchase.';
           });
-          if (finishOnboarding) {
+          if (finishOnboarding && purchasedSubscriptionActive) {
             Navigator.of(context).pop(OnboardingPaywallResult.subscribed);
-          } else if (_openChatAfterNextPurchaseUpdate) {
+          } else if (_openChatAfterNextPurchaseUpdate &&
+              purchasedSubscriptionActive) {
             _openChatAfterNextPurchaseUpdate = false;
             await _openChatAfterPurchase();
           }
@@ -268,14 +275,19 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
         case PurchaseStatus.restored:
           _purchaseFlowTimeout?.cancel();
           _finishOnboardingAfterNextPurchase = false;
-          await context.read<AppState>().activateStoreSubscription();
+          final restoredSubscriptionActive = await _validateSubscription(
+            purchaseDetails,
+            isNewPurchase: false,
+          );
           if (purchaseDetails.pendingCompletePurchase) {
             await _inAppPurchase.completePurchase(purchaseDetails);
           }
           if (!mounted) return;
           setState(() {
             _isPurchasePending = false;
-            _storeMessage = 'Your Gwyn Plus subscription is active.';
+            _storeMessage = restoredSubscriptionActive
+                ? 'Your Gwyn Plus subscription is active.'
+                : 'No active Gwyn Plus subscription was found.';
           });
           break;
         case PurchaseStatus.error:
@@ -371,6 +383,30 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
         _storeMessage = 'Could not start the purchase flow.';
       });
     }
+  }
+
+  Future<bool> _validateSubscription(
+    PurchaseDetails purchaseDetails, {
+    required bool isNewPurchase,
+  }) async {
+    final appState = context.read<AppState>();
+    final validated = await RevenueCatService.instance.syncExternalPurchase(
+      productIdentifier: purchaseDetails.productID,
+      isNewPurchase: isNewPurchase,
+    );
+
+    if (validated != null) return validated;
+
+    // Release iOS builds must never grant Plus from a locally replayed
+    // transaction. StoreKit purchase status alone does not prove that an
+    // auto-renewing subscription is still active.
+    if (defaultTargetPlatform == TargetPlatform.iOS && kReleaseMode) {
+      await appState.setStoreSubscriptionActive(false);
+      return false;
+    }
+
+    await appState.activateStoreSubscription();
+    return true;
   }
 
   void _startPurchaseFlowTimeout() {

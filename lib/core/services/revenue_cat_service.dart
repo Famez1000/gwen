@@ -36,7 +36,6 @@ class RevenueCatService {
   bool get isConfigured => _configured;
 
   Future<void> initialize(AppState appState) async {
-    if (!useRevenueCatPaywalls) return;
     if (_configured) return;
     if (!_isSupportedPlatform) return;
 
@@ -53,13 +52,20 @@ class RevenueCatService {
 
     try {
       if (kDebugMode) await Purchases.setLogLevel(LogLevel.debug);
-      await Purchases.configure(PurchasesConfiguration(apiKey));
+      final configuration = PurchasesConfiguration(apiKey);
+      if (!useRevenueCatPaywalls) {
+        configuration.purchasesAreCompletedBy = PurchasesAreCompletedByMyApp(
+          storeKitVersion: StoreKitVersion.storeKit2,
+        );
+      }
+      await Purchases.configure(configuration);
       _configured = true;
 
       _customerInfoListener = (customerInfo) {
         unawaited(_applyCustomerInfo(customerInfo));
       };
       Purchases.addCustomerInfoUpdateListener(_customerInfoListener!);
+      if (!useRevenueCatPaywalls) await Purchases.syncPurchases();
       await refreshSubscriptionStatus();
     } catch (_) {
       _configured = false;
@@ -78,6 +84,30 @@ class RevenueCatService {
     if (!_configured) return false;
     final customerInfo = await Purchases.restorePurchases();
     return _applyCustomerInfo(customerInfo);
+  }
+
+  /// Sends a purchase handled by the app's custom StoreKit/Play Billing UI to
+  /// RevenueCat and returns the server-validated entitlement state. A null
+  /// result means validation is unavailable for this build/platform.
+  Future<bool?> syncExternalPurchase({
+    required String productIdentifier,
+    required bool isNewPurchase,
+  }) async {
+    if (!_configured) return null;
+
+    try {
+      if (isNewPurchase && defaultTargetPlatform == TargetPlatform.iOS) {
+        await Purchases.recordPurchase(productIdentifier);
+      } else {
+        await Purchases.syncPurchases();
+      }
+      return await refreshSubscriptionStatus();
+    } catch (error, stackTrace) {
+      debugPrint('RevenueCat purchase validation failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      await _appState?.setStoreSubscriptionActive(false);
+      return false;
+    }
   }
 
   Future<bool> _applyCustomerInfo(CustomerInfo customerInfo) async {

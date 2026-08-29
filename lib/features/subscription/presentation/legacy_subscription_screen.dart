@@ -73,6 +73,9 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
   bool _isPurchasePending = false;
   bool _didRequestInitialRestore = false;
   bool _openChatAfterNextPurchaseUpdate = false;
+  // StoreKit can replay an old purchased transaction during the initial
+  // restore. Only a purchase started from this screen may finish onboarding.
+  bool _finishOnboardingAfterNextPurchase = false;
   String? _storeMessage;
 
   String get _storeName {
@@ -241,6 +244,9 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
           break;
         case PurchaseStatus.purchased:
           _purchaseFlowTimeout?.cancel();
+          final finishOnboarding =
+              widget.isOnboardingPaywall && _finishOnboardingAfterNextPurchase;
+          _finishOnboardingAfterNextPurchase = false;
           await context.read<AppState>().activateStoreSubscription();
           if (purchaseDetails.pendingCompletePurchase) {
             await _inAppPurchase.completePurchase(purchaseDetails);
@@ -252,7 +258,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
                 ? null
                 : 'Gwyn Plus is active.';
           });
-          if (widget.isOnboardingPaywall) {
+          if (finishOnboarding) {
             Navigator.of(context).pop(OnboardingPaywallResult.subscribed);
           } else if (_openChatAfterNextPurchaseUpdate) {
             _openChatAfterNextPurchaseUpdate = false;
@@ -261,6 +267,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
           break;
         case PurchaseStatus.restored:
           _purchaseFlowTimeout?.cancel();
+          _finishOnboardingAfterNextPurchase = false;
           await context.read<AppState>().activateStoreSubscription();
           if (purchaseDetails.pendingCompletePurchase) {
             await _inAppPurchase.completePurchase(purchaseDetails);
@@ -273,6 +280,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
           break;
         case PurchaseStatus.error:
           _purchaseFlowTimeout?.cancel();
+          _finishOnboardingAfterNextPurchase = false;
           if (purchaseDetails.pendingCompletePurchase) {
             await _inAppPurchase.completePurchase(purchaseDetails);
           }
@@ -291,6 +299,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
           break;
         case PurchaseStatus.canceled:
           _purchaseFlowTimeout?.cancel();
+          _finishOnboardingAfterNextPurchase = false;
           if (mounted) {
             setState(() {
               _isPurchasePending = false;
@@ -321,6 +330,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
     setState(() {
       _isPurchasePending = true;
       _openChatAfterNextPurchaseUpdate = !widget.isOnboardingPaywall;
+      _finishOnboardingAfterNextPurchase = widget.isOnboardingPaywall;
       _storeMessage = null;
     });
 
@@ -333,6 +343,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
         setState(() {
           _isPurchasePending = false;
           _openChatAfterNextPurchaseUpdate = false;
+          _finishOnboardingAfterNextPurchase = false;
           _storeMessage = 'Could not start the purchase flow.';
         });
       } else if (started) {
@@ -347,6 +358,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
       setState(() {
         _isPurchasePending = false;
         _openChatAfterNextPurchaseUpdate = false;
+        _finishOnboardingAfterNextPurchase = false;
         _storeMessage = error.message ?? 'Could not start the purchase flow.';
       });
     } catch (error) {
@@ -355,6 +367,7 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
       setState(() {
         _isPurchasePending = false;
         _openChatAfterNextPurchaseUpdate = false;
+        _finishOnboardingAfterNextPurchase = false;
         _storeMessage = 'Could not start the purchase flow.';
       });
     }

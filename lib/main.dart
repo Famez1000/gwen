@@ -12,12 +12,13 @@ import 'package:provider/provider.dart';
 import 'features/heal/presentation/heal_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/learning/presentation/understand_screen.dart';
-import 'features/onboarding/presentation/onboarding_screen.dart';
-import 'features/onboarding/presentation/personalized_onboarding_screen.dart';
 import 'features/sanctuary/presentation/sanctuary_screen.dart';
 import 'features/calm_down/presentation/calm_down_screen.dart';
 import 'features/grounding/presentation/grounding_screen.dart';
 import 'features/journaling/presentation/journaling_screen.dart';
+import 'onboarding/merged_onboarding_flow.dart';
+import 'onboarding/models/onboarding_answers.dart';
+import 'onboarding/state/onboarding_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,27 +86,24 @@ class StillnessApp extends StatelessWidget {
       child: AnimatedBuilder(
         animation: appState,
         builder: (context, child) {
-          return MaterialApp(
-            title: 'Gwyn',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.getThemeForIndex(appState.themeModeIndex),
-            themeMode: appState.themeModeIndex == 2
-                ? ThemeMode.dark
-                : ThemeMode.light,
-            home:
-                appState.onboardingCompleted && appState.healDisclaimerAccepted
-                ? AppShell(appState: appState)
-                : appState.onboardingTrack == OnboardingTrack.personalized
-                ? PersonalizedOnboardingScreen(
-                    appState: appState,
-                    onAcceptTerms: appState.acceptHealDisclaimer,
-                    onComplete: () => _completeOnboarding(appState),
-                  )
-                : OnboardingScreen(
-                    onAcceptTerms: appState.acceptHealDisclaimer,
-                    onNameSubmitted: appState.setUserName,
-                    onComplete: () => _completeOnboarding(appState),
-                  ),
+          return ChangeNotifierProvider<OnboardingState>(
+            create: (_) => OnboardingState(
+              onComplete: (answers) =>
+                  _completeNewOnboarding(appState, answers),
+            ),
+            child: MaterialApp(
+              title: 'Gwyn',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.getThemeForIndex(appState.themeModeIndex),
+              themeMode: appState.themeModeIndex == 2
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+              home:
+                  appState.onboardingCompleted &&
+                      appState.healDisclaimerAccepted
+                  ? AppShell(appState: appState)
+                  : const MergedOnboardingFlow(),
+            ),
           );
         },
       ),
@@ -113,12 +111,22 @@ class StillnessApp extends StatelessWidget {
   }
 }
 
-Future<void> _completeOnboarding(AppState appState) async {
+Future<void> _completeNewOnboarding(
+  AppState appState,
+  OnboardingAnswers answers,
+) async {
+  final firstName = answers.firstName?.trim();
+  if (firstName != null && firstName.isNotEmpty) {
+    await appState.setUserName(firstName);
+  }
+  await appState.acceptHealDisclaimer();
   await appState.completeOnboarding();
-  await _runStartupStep(
-    'NotificationService.scheduleDefaultDailyReminders',
-    NotificationService.instance.scheduleDefaultDailyReminders,
-  );
+  if (answers.notificationsEnabled) {
+    await _runStartupStep(
+      'NotificationService.scheduleDefaultDailyReminders',
+      NotificationService.instance.scheduleDefaultDailyReminders,
+    );
+  }
 }
 
 class AppShell extends StatefulWidget {

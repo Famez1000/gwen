@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gwen/main.dart';
 import 'package:gwen/core/state/app_state.dart';
+import 'package:gwen/onboarding/merged_onboarding_flow.dart';
 
 void main() {
   setUp(() {
@@ -43,6 +44,19 @@ void main() {
     expect(find.text('Heal'), findsOneWidget);
   });
 
+  testWidgets('a new user starts in the merged onboarding flow', (
+    WidgetTester tester,
+  ) async {
+    final appState = AppState();
+    await appState.init();
+
+    await tester.pumpWidget(StillnessApp(appState: appState));
+    await tester.pump();
+
+    expect(find.byType(MergedOnboardingFlow), findsOneWidget);
+    expect(find.text('Hi, I am Gwyn'), findsOneWidget);
+  });
+
   testWidgets(
     'an upgraded user who has not accepted the terms starts at onboarding',
     (WidgetTester tester) async {
@@ -56,6 +70,7 @@ void main() {
       await tester.pumpWidget(StillnessApp(appState: appState));
       await tester.pump();
 
+      expect(find.byType(MergedOnboardingFlow), findsOneWidget);
       expect(find.text('Hi, I am Gwyn'), findsOneWidget);
       expect(find.text('Terms and Conditions'), findsNothing);
     },

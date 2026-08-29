@@ -638,8 +638,18 @@ class _LegacySubscriptionScreenState extends State<LegacySubscriptionScreen> {
         appBar: AppBar(
           automaticallyImplyLeading: !widget.isOnboardingPaywall,
           backgroundColor: Colors.transparent,
+          foregroundColor: surfaceText,
           elevation: 0,
-          actions: [],
+          actions: [
+            if (widget.isOnboardingPaywall)
+              IconButton(
+                tooltip: 'Continue with free version',
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(OnboardingPaywallResult.continueFree),
+              ),
+          ],
         ),
         body: Stack(
           children: [
@@ -924,22 +934,23 @@ class _PlanOption extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? primaryColor : mutedText,
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Flexible(
+                      Icon(
+                        isSelected
+                            ? Icons.radio_button_checked_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: isSelected ? primaryColor : mutedText,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Text(
                           title,
+                          maxLines: 1,
+                          softWrap: false,
                           style: TextStyle(
                             color: surfaceText,
                             fontWeight: FontWeight.w800,
@@ -960,6 +971,7 @@ class _PlanOption extends StatelessWidget {
                           ),
                           child: Text(
                             badge!,
+                            maxLines: 1,
                             style: TextStyle(
                               color: primaryColor,
                               fontSize: 11,
@@ -971,24 +983,32 @@ class _PlanOption extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: mutedText,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
+                  Row(
+                    children: [
+                      const SizedBox(width: 36),
+                      Expanded(
+                        child: Text(
+                          subtitle,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: mutedText,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        price,
+                        style: TextStyle(
+                          color: surfaceText,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              price,
-              style: TextStyle(
-                color: surfaceText,
-                fontWeight: FontWeight.w900,
-                fontSize: 20,
               ),
             ),
           ],
